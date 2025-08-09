@@ -1,6 +1,2 @@
-// Version 1 (Backward Compatible)
-public class Calculator {
-    public int add(int a, int b) {
-        return a + b;
-    }
-}
+def old_feature_function():
+    print("This is an old feature.")
