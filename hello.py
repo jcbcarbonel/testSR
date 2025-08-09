@@ -1,2 +1,1 @@
-   # Python 2 (incompatible with Python 3)
-print "This is a statement."
+ print("This is a function call.")
