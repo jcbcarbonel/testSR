@@ -1,0 +1,24 @@
+    name: Release
+
+    on:
+      push:
+        branches:
+          - main # Or your release branch
+
+    jobs:
+      release:
+        runs-on: ubuntu-latest
+        permissions:
+          contents: write # To create releases and tags
+          issues: write # To comment on issues
+          pull-requests: write # To comment on pull requests
+
+        steps:
+          - uses: actions/checkout@v4
+          - uses: actions/setup-node@v4
+            with:
+              node-version: '20' # Or your preferred Node.js version
+          - run: npm ci # Or yarn install
+          - run: npx semantic-release
+            env:
+              GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
