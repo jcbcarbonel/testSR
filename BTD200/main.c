@@ -29,7 +29,6 @@
 #include <arQ1010/interruptExt1_GSM.c>
 #include <arQ1010/interruptExt2_IN2.c>
 #include <arQ1010/dualColorLED.c>
-#include <arQ1010/gsm.c>
 #include <arQ1010/LTE.c>
 #include <arQ1010/interruptTimer1.c>
 
