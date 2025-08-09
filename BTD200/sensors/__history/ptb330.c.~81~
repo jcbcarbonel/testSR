@@ -1,0 +1,115 @@
+int1 dataPresent_ptb330()
+{
+   int16 timeOut=0;
+   
+   while(!kbhit(RS232_PTB330)&&++timeOut<50000)
+   { delay_us(100); }
+   if(!kbhit(RS232_PTB330))
+      return 0;
+   else
+      return 1;
+}
+
+// sample output--> 
+void extractDataPTB330()
+{
+   int1 dp=0;
+   int i=0;
+   int x=0;
+   char cx[55]={};
+   char chx;
+   
+   delay_ms(1000);
+   fprintf(RS232_PTB330,"SEND\r");
+   dp = dataPresent_ptb330();
+   if (dp == 1)
+   {
+      while(x<20)
+      {
+         if(kbhit(RS232_PTB330))
+         {
+            chx = fgetc(RS232_PTB330);
+            if ((chx == 0x0D) && (i>5))
+            {
+               cx[i]='\0';
+               strcpy(funcReturnVar,cx);
+               break;
+            }               
+            if ((chx != 0x0A) && (chx != 0x0D))
+            {
+               cx[i]=chx;
+               i++;               
+            }
+            x++;
+         }
+      }         
+   }
+   else
+   {
+      strcpy(funcReturnVar,"ptb_err");
+   }
+   fprintf(PC,"\nPTB330=%s\n",funcReturnVar);
+}
+/*
+      
+   char cx[20];
+   int i=0;
+   
+   int cntx = 0;
+    
+    char temp[5]={0xFA,0x30,0x04,0x43,0X00}; //F48: initialise
+
+retx:
+    delay_ms(100);
+    
+    i=0;
+    
+    output_high(EN_DE_WL450);
+    output_high(EN_RE_WL450);
+    fprintf(RS485_WL450, "%s",temp);
+    output_low(EN_DE_WL450);
+    output_low(EN_RE_WL450);
+    
+    dp = dataPresent();
+    if (dp==0)
+    {
+      cntx++;
+      if (cntx <= 3)
+      {
+         fprintf(PC,"retry INI...\n");
+         goto retx;
+      }         
+      else
+      {
+         fprintf(PC,"ERR_INI...\n");
+         return;
+      }         
+    }
+    
+    while(i<10)
+      {cx[i]=fgetc(RS485_WL450);
+       //if (cx[i]!= 0x00)
+         i++;
+      }
+    /*
+    fprintf(PC, "\nrcv: ");
+    i=0;
+    while(i<10)
+      {fprintf(PC,"%X ",cx[i]);
+       i++;
+      }
+    
+    
+    cx[i]=0x00;
+/*    
+    fprintf(PC,"-------------\n");
+    for(xx=0;xx<=i;xx++)
+      fprintf(PC,"%x ",cx[xx]);
+    fprintf(PC,"-------------\n");
+  
+    if(CalcCRC16B(cx,10))
+     {fprintf(PC,"WL450 INITIALISED\n");}
+    else
+     {fprintf(PC,"WL450 NOT INITIALISED!\n");}   
+  }
+*/

@@ -1,0 +1,33 @@
+
+#int_rda2
+void rda2_isr(void)
+{
+   INTSERIAL2_FLAG = 1;
+   RXD2_DATA[WRITE2_CNTR++]=fgetc(PC);
+}
+
+void clear_buffer2(void)
+{
+   RXD2_DATA[0]='\0';
+   WRITE2_CNTR=0;
+   
+   INTSERIAL2_FLAG=0;
+}
+
+void getDataFromPC()
+{
+   int whilex=0;
+   while(whilex==0)
+   {
+      if (INTSERIAL2_FLAG==1)
+      {
+         delay_ms(200);
+         RXD2_DATA[WRITE2_CNTR-1]='\0';
+         strcpy(FROMSERIALPC,RXD2_DATA);
+         clear_buffer2();
+         whilex=1;
+      }         
+   }
+}
+
+

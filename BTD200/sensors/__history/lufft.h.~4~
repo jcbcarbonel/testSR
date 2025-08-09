@@ -1,0 +1,3 @@
+void getLufft2Streams();
+void getBSWM_lufftData();
+void getMinMaxTemp();

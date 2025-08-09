@@ -1,0 +1,1487 @@
+
+#int_ext1
+void ext_isr1(void)
+{
+   EXT_FLAG=1;
+   strcpy(SMS_RCV,RXD_DATA);
+}
+
+void clear_inputs()
+{
+   int ii=0;
+   for(ii=0;ii<60;ii++)
+      fprintf(SERIAL_INT, "AT+CMGD=%i\r", ii);
+}
+
+void getGSM_Strength()
+{
+   char *statx=NULL;
+   char *statcat=NULL;
+   
+   strcpy(DESIRED_RESPONSE, "+CSQ: ");
+   clear_buffer();
+   delay_ms(200);
+   fprintf(SERIAL_INT,"AT+CSQ\r");
+   statx = GetResponse();
+   strcpy(TOKEN,",");
+   statcat = strtok(statx,TOKEN);
+   strcpy(funcReturnVar,statcat);
+}
+
+/*
+char *getLoad()
+{
+   char sPhNo[5]={};
+   char LOAD[7]={};
+   int1 i1GetLoadSendVerify=0;
+   int iGetLoadReceiveVerify=0;
+   char store2msg[75]={};
+   char *statx=NULL;
+   int ii=0;
+   
+   
+   if (OPTINDICATOR==0)//-- > if module is using smart sim
+   {
+      strcpy(sPhNo, "214"); 
+      strcpy(SMS_TOBE_SENT, "?1515"); 
+   }
+   else //-- > if module is using smart globe
+   {
+      strcpy(sPhNo, "222"); 
+      strcpy(SMS_TOBE_SENT, "BAL");
+   }
+   clear_buffer();
+   delay_ms(500);
+   
+   i1GetLoadSendVerify = SendSMS(sPhNo);
+   INTSERIAL_FLAG = 0;
+   ii=0;
+   if (i1GetLoadSendVerify==0) //-->if load inquiry not sent
+      goto notsend;
+   
+   restart_wdt();
+   do{
+      delay_ms(200);
+   }while ((!INTSERIAL_FLAG) && (ii++ < 250));
+   iGetLoadReceiveVerify = processRcv();
+   if ((iGetLoadReceiveVerify!=0) && (iGetLoadReceiveVerify!=100) && (INTSERIAL_FLAG) && (iGetLoadReceiveVerify!=99)) 
+   {
+      readSMS(iGetLoadReceiveVerify);
+      strcpy(TOKEN, "P");
+      strcpy(store2msg,MSG_DATA1);
+      statx = strtok(store2msg, TOKEN);
+      strcpy(TOKEN, " ");
+      statx = strtok(0, TOKEN);
+      DelSMS(iGetLoadReceiveVerify);
+      if (!stricmp(statx," "))
+         strcpy(LOAD,"0.0");
+      else
+         strcpy(LOAD,statx);
+   }      
+   else
+   {
+   notsend:
+      strcpy(LOAD,"0.0");
+   }
+   INTSERIAL_FLAG=0;
+   strcpy(funcReturnVar,LOAD);
+   return(funcReturnVar);
+}
+*/
+
+
+void logger_health_status()
+{
+   char fullstrStatus[70] = {};
+   float primary = 0;
+   float secondary = 0;
+   float restemp=0; 
+   float truehumid=0;
+   char charx = NULL;
+   
+   charx='+';
+   
+   
+   getBatteryVoltages(primary, secondary);
+   sprintf(fullstrStatus,"%2.3f+%2.3f+",primary,secondary);
+   
+   getBoardCurrent();   // board current
+   strcat(fullstrStatus,funcReturnVar);
+   strncat(fullstrStatus,&charx,1);
+   
+   getVoltage(channel_VBOOST_ADC); // power board 1 voltage
+   strcat(fullstrStatus,funcReturnVar);
+   strncat(fullstrStatus,&charx,1);
+   
+#ifdef GETBOOSTVOLTAGE  
+   getVoltage(channel_VBOOST2_ADC); // power board 2 voltage
+   strcat(fullstrStatus,funcReturnVar);
+   strncat(fullstrStatus,&charx,1);
+#endif   
+#ifdef GETEXTERNALVOLTAGE  
+   getVoltage(channel_VEXT2_ADC); // external voltage
+   strcat(fullstrStatus,funcReturnVar);
+   strncat(fullstrStatus,&charx,1);
+#endif
+   
+   
+   chargeFaultCheck();  // check fault and charge status
+   strcat(fullstrStatus,funcReturnVar);
+   strncat(fullstrStatus,&charx,1);
+   
+   getGSM_Strength(); // get gsm signal
+   strcat(fullstrStatus,funcReturnVar);
+   strncat(fullstrStatus,&charx,1);
+   
+   sht_rd (restemp, truehumid);  // SHT
+   sprintf(funcReturnVar,"%3.1f+%3.1f",restemp,truehumid);
+   strcat(fullstrStatus,funcReturnVar);
+   strncat(fullstrStatus,&charx,1);
+   
+   itoa(DTFPageCnt,10,funcReturnVar); // get flash page
+   strcat(fullstrStatus,funcReturnVar);
+   strcpy(funcReturnVar,fullstrStatus);
+   //fprintf(PC,"health=%s\n",fullstrStatus);
+}
+
+/*
+void logger_health_status()
+{
+   char strength[5]={};
+   char battery[5]={};
+   char batext1[7]={};
+   char batext2[7]={};
+   char temp[5]={};
+   char hum[5]={};
+   float restemp=0; 
+   float truehumid=0;
+   float adcValue=0;
+   char charx=NULL;
+   char fullstrStatus[70] = {};
+   
+   
+   INTSERIAL_FLAG=0;
+
+   //-----strength-------------
+   //if (SATELLITE_ENABLE == 0)
+      getGSM_Strength();
+   //else
+   //   getCSQ();
+   strcat(strength,funcReturnVar);
+   
+   //--------battery-------------- 
+   batPath();
+   strcpy(battery,funcReturnVar);
+   
+   //---------battery external------------------
+   adcValue = batExt_adc(8);
+   sprintf(batext1,"%2.2f",adcValue);
+   
+   adcValue = batExt_adc(9);
+   sprintf(batext2,"%2.2f",adcValue);
+   fprintf(PC,"batext2=%s\n",batext2);
+   
+   //----- temperature and humidity-----
+   sht_rd (restemp, truehumid); 
+   sprintf(temp,"%3.1f",restemp);
+   sprintf(hum,"%3.1f",truehumid);
+
+   charx='+';
+   #ifdef URBAN
+      charx=',';
+   #endif
+   
+   strcpy(TOKEN, "+");
+   strcpy(fullstrStatus,temp);
+   strncat(fullstrStatus,&charx,1);
+   strcat(fullstrStatus,hum);
+   strncat(fullstrStatus,&charx,1);
+   #ifndef WIFLY
+      strcat(fullstrStatus,strength);
+      strncat(fullstrStatus,&charx,1);
+   #endif
+   strcat(fullstrStatus,battery);
+   strncat(fullstrStatus,&charx,1);
+   
+   strcat(fullstrStatus,batext1);
+   strncat(fullstrStatus,&charx,1);
+   
+   strcat(fullstrStatus,batext2);
+   strcpy(funcReturnVar,fullstrStatus);
+   
+}
+*/
+
+void DelSMS(int msgNum)
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_buffer();
+   delay_ms(50);
+   fprintf(SERIAL_INT,"AT+CMGD=%d\r", msgNum);
+}
+
+int Register2Network(void)
+{
+   int counter = 0;
+   int1 status=FALSE;
+   strcpy(DESIRED_RESPONSE, "+CREG: 0,1");
+   //fprintf(SERIAL_INT, "AT+COPS?\r");
+   do
+   {
+      fprintf(SERIAL_INT, "AT+CREG?\r");
+      delay_ms(1000);
+      if (INTSERIAL_FLAG)
+      {
+         if (GetResponse())
+         {
+            
+            INTSERIAL_FLAG=0;
+            status=TRUE;
+            break;
+         }
+         else
+            INTSERIAL_FLAG=0;
+      }
+   } while(++counter <= 2);
+   
+   if(status==TRUE)
+      return TRUE;
+   else
+      return FALSE;
+}
+
+int1 testGSM(void)
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_buffer();
+   delay_ms(200);
+   fprintf(SERIAL_INT, "AT\r");
+   if(GetResponse())
+   {
+      fprintf(PC,"Active %s\n",FIRMWARE_desc);
+      return TRUE;
+   }
+   else
+      return FALSE;
+}
+
+
+
+void hangUpCall()
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_buffer();
+   fprintf(SERIAL_INT, "AT+CHUP\r"); // Hang up call
+   if(GetResponse())
+      fprintf(PC,"Hung up\n");
+}
+
+void IgniteModule()
+{
+   int cnt = 0;
+   
+   output_low(IGT);
+   delay_ms(10);
+   output_high(IGT);
+   delay_ms(110);
+   output_low(IGT);
+   delay_ms(1000);
+   {
+      delay_ms(100);
+      cnt++;
+   } while(!testGSM() && (cnt < 5));
+}
+
+void InitGSM(void)
+{
+   char *temp=NULL;
+   int cntx = 0;
+  
+   clear_buffer();
+   fprintf(PC,"Initialize GSM\n");
+ignite:     
+      cntx++;
+      restart_wdt();
+      strcpy(DESIRED_RESPONSE, "OK");
+      IgniteModule(); // switch on the module
+      fprintf(PC,"Ignited\n");
+      
+      port_b_pullups(00000010);
+      fprintf(PC,"Pull up on PORT B\n");
+      //fprintf(SERIAL_INT,"AT+CFUN=1,1\r");
+      //if (GetResponse())
+     //    fprintf(PC,"ME reset\n");
+      fprintf(SERIAL_INT, "AT&F0\r"); // set to factory settings
+      if(GetResponse())
+         fprintf(PC,"Factory settings\n");
+
+      fprintf(SERIAL_INT, "ATE0\r"); // set echo to off
+      if(GetResponse())
+         fprintf(PC,"Echo off\n");
+         
+      fprintf(SERIAL_INT, "AT^SSYNC=1\r");      // activate LED
+      if(GetResponse())
+         fprintf(PC,"LED active\n");
+      
+      strcpy(DESIRED_RESPONSE, "^SCKS:");
+      strcpy(TOKEN, "\r\n");
+      fprintf(SERIAL_INT, "AT^SCKS?\r");
+      temp = strtok(GetResponse(), TOKEN);
+      fprintf(PC, "Sim Stat:%s\n", temp);
+
+      
+   strcpy(DESIRED_RESPONSE, "OK");
+
+   fprintf(SERIAL_INT, "AT+CNMI=1,1,0,0,1\r"); // sms indications set
+   if(GetResponse())
+      fprintf(PC,"SMS indications set\n");
+
+   fprintf(SERIAL_INT, "AT+CMGF=1\r"); // set to text mode
+   if(GetResponse())
+      fprintf(PC,"Set text mode\n");
+
+   fprintf(SERIAL_INT, "AT+CSMS=0\r");
+   if(GetResponse())
+      fprintf(PC,"Msg service selected\n");
+
+   fprintf(SERIAL_INT, "AT+CLIP=1\r"); // display number of calling party
+   if(GetResponse())
+      fprintf(PC,"CLIP enabled\n");
+   fprintf(SERIAL_INT, "AT+CPBS=ON\r"); // select GSM memory as storage phonebook
+   if(GetResponse())
+      fprintf(PC,"PhonebookReady\n");
+   fprintf(SERIAL_INT, "AT+CPMS=MT,MT,MT\r");
+   if (GetResponse())
+      fprintf(PC,"StorageReady\n");
+
+   if(Register2Network())
+         fprintf(PC,"Registered to Network\n"); // register ME to network
+   else
+   {
+      #ifdef SAT_ONLY
+         return;
+      #else
+         if (cntx > 0)
+            return;
+         else
+            goto ignite;
+      #endif
+   }
+   
+   
+FindOperator:   
+   clear_buffer();
+   strcpy(DESIRED_RESPONSE, "+COPS:");
+   strcpy(TOKEN,"\"");
+   fprintf(SERIAL_INT,"AT+COPS?\r");
+   strtok(GetResponse(),TOKEN);
+   temp=strtok(0,TOKEN);
+   fprintf(PC,"cops = %s\n",temp);
+   if ((strcmp(temp,"SMART")==0) || (strcmp(temp,"TalkNText")==0))
+   {  OPTINDICATOR=0;
+      fprintf(PC, "SMART Network\n");
+   }
+   else if(strcmp(temp,"Globe Telecom-PH")==0)
+   {  OPTINDICATOR=1;
+      fprintf(PC, "GLOBE Network\n");
+   }
+   else 
+   {  
+      OPTINDICATOR=2;
+      fprintf(PC,"%s\n",temp);
+   }
+   fprintf(PC,"GSM ok.\n");
+}
+
+void ShutDownGSM()
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_buffer();
+   delay_ms(200);
+   fprintf(SERIAL_INT,"AT^SMSO\r");
+   if(GetResponse())
+      fprintf(PC,"SMS MODULE SHUTDOWN\n");
+}
+
+void gsnId()
+{
+   char *tempx = NULL;
+   
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_buffer();
+   strcpy(TOKEN,"\r\n");
+   fprintf(SERIAL_INT, "AT+GSN\r"); 
+   delay_ms(200);
+   tempx = strtok(RXD_DATA,TOKEN);
+   fprintf(PC,"GSN ID=%s\n",tempx);
+   strcpy(funcReturnVar,tempx);
+}
+
+int1 SendSMS(char *Phone_Number)
+{
+   char dq = 34;
+   int1 status = FALSE;
+   int1 statx=FALSE;
+   int counter = 0;
+   int loopCount=0;
+
+
+   strcpy(DESIRED_RESPONSE, "> ");
+chox:
+   clear_buffer();
+   delay_ms(200);
+   fprintf(SERIAL_INT, "AT+CMGS=%c%s%c,129\r", dq,Phone_Number,dq);
+   do
+   {
+      delay_ms(200);
+      if (INTSERIAL_FLAG)
+      {
+         if (GetResponse())
+         {
+            status=TRUE;
+            break;
+         }
+         else
+            INTSERIAL_FLAG=0;
+      }
+   } while(counter++ < 10);
+   if (status==FALSE)
+   {
+      fprintf(PC, "No/low GSM signal response\n");
+      if (++loopCount<3)
+         goto chox;
+   }
+   else
+   {
+      clear_buffer();
+      delay_ms(500);
+      fprintf(SERIAL_INT, "%s", SMS_TOBE_SENT);
+      strcpy(DESIRED_RESPONSE, "OK");
+      fputc(26, SERIAL_INT); // ctrl-z to terminate message and start sending
+      counter = 0;
+      do
+      {
+         delay_ms(200);
+         if (INTSERIAL_FLAG)
+         {
+            if (GetResponse())
+            {
+               statx=TRUE;
+               break;
+            }
+            else
+               INTSERIAL_FLAG=0;
+         }
+      } while(counter++ < 35);
+      if(statx==TRUE)
+         fprintf(PC, "Message sent.\n");
+      else
+      {
+         status = 0;
+         fprintf(PC, "Message NOT sent.\n");
+      }
+   }
+   return status;
+}
+
+int1 AttemptToSend() // attempt to send three times
+{
+   int1 SmsSendSucceed = 0;
+   int xx = 0;
+   
+   for (xx = 0; xx < 2; xx++)
+   {
+      restart_wdt();
+      SmsSendSucceed = SendSMS(SERVERNUMBER);
+      if (SmsSendSucceed == 0)
+         delay_ms(2500);
+      else
+         break;
+   }
+   return SmsSendSucceed;
+}
+
+int1 AttemptToSend_SENDER() // attempt to send three times
+{
+   int1 SmsSendSucceed = 0;
+   int xx = 0;
+   
+   for (xx = 0; xx < 2; xx++)
+   {
+      restart_wdt();
+      if (REPLY_TO_SENDER==1)
+         SmsSendSucceed = SendSMS(MSG_SENDER);
+      else
+         SmsSendSucceed = SendSMS(SERVERNUMBER);
+      if (SmsSendSucceed == 0)
+         delay_ms(2500);
+      else
+         break;
+   }
+   return SmsSendSucceed;
+}
+
+int1 AttemptToSend_asti() // jas astiservernum
+{
+   int1 SmsSendSucceed_asti = 0;
+   int yy = 0;
+   
+   for (yy = 0; yy < 2; yy++)
+   {
+      restart_wdt();
+      SmsSendSucceed_asti = SendSMS(ASTISERVERNUM);
+      if (SmsSendSucceed_asti == 0)
+         delay_ms(2500);
+      else
+         break;
+   }
+   return SmsSendSucceed_asti;
+}
+
+void SMSsendnwrite()
+{   
+   fprintf(PC,"DATA: %s\n",SMS_TOBE_SENT);
+                  
+   sendSMSresult = AttemptToSend();
+   if (sendSMSresult==0)
+   {
+      if (unsentCnt!=1)
+      {
+         unsentCnt=1;
+         unsentDTFPageCnt=DTFPageCnt;
+         unsentDTFByteCnt=DTFByteCnt;
+      }                  
+         fprintf(PC,"MESSAGE SENT FAILED\n");
+   }
+                  
+   //jas astiservernumber
+   if(twoservers==1)
+   {
+      sendSMSresult_asti = AttemptToSend_asti();   
+      if (sendSMSresult_asti==0)
+      {
+         if (unsentCnt!=1)
+         {  unsentCnt=1;
+            unsentDTFPageCnt=DTFPageCnt;
+            unsentDTFByteCnt=DTFByteCnt;
+         }                  
+            fprintf(PC,"MESSAGE SENT FAILED\n");
+      }
+   }
+                  
+   DTFWriteToFlash(REALDATA,strlen(REALDATA),0);
+   if ((sendSMSresult==0) && (SATELLITE_FLAG == 1))
+      {satelliteSend();}
+}
+
+
+int processRcv(void)
+{
+   char *ptrx=NULL;
+   char *ptrx1=NULL;
+   char *msgNum=NULL;
+   char nummsg[4]={};
+   int procInt=0;
+   int read_cntr_temp=0;
+   
+   strcpy(DESIRED_RESPONSE, "\r\nRING\r\n");
+   strcpy(TOKEN, "\"");
+   read_cntr_temp = READ_CNTR;
+   ptrx = GetResponse();
+   delay_ms(1200);
+   if (ptrx) 
+   {
+      ptrx1 = strtok(ptrx, TOKEN);
+      ptrx1 = strtok(0, TOKEN);
+      strcpy(MSG_SENDER,ptrx1);
+      delay_ms(100);
+      fprintf(PC, "Call from %s.\n",MSG_SENDER);
+      hangUpCall();
+      return 100;
+   }
+   else
+   {
+      strcpy(DESIRED_RESPONSE, "+CMTI: \"MT\",");
+      READ_CNTR = read_cntr_temp;
+      msgNum = GetResponse();
+      delay_ms(200);
+      if (msgNum) { 
+         strcpy(nummsg,msgNum);
+         procInt = atoi(nummsg);
+         return procInt;
+      }
+      else
+      {
+         strcpy(DESIRED_RESPONSE, "^SISR: 0,");
+         READ_CNTR = read_cntr_temp;
+         delay_ms(200);
+         if (GetResponse())
+         {
+            fprintf(PC, "GPRS Msg\n");
+            return 99;
+         }
+         else
+            return 0;
+      }
+   }
+}
+
+int ValidateNum(char *numberValidate) 
+{
+   int i=0;
+   char EEchar=NULL;
+   int iiz=0;
+   char phone_Number[20]={};
+   int intAddr=0;
+   
+   fprintf(PC,"Validating Number\n");
+   if(*numberValidate != '+' && *numberValidate != '0') {
+      fprintf(PC, "Invalid format\n");
+      strcpy(SMS_TOBE_SENT,"Invalid format");
+      return 31;
+   }else 
+   {
+      if(*numberValidate == '+') 
+      {
+         numberValidate += 2;  // remove the +63
+         *numberValidate = '0'; // replace with the character '0'
+      }
+      strcpy(phone_Number, numberValidate);
+      do {
+         EEchar = read_eeprom(iiz++);
+         if ((EEchar != '*') && (EEchar != '@'))
+         {
+            if (phone_Number[i]==EEchar)
+            {
+               i++;
+               if (i == strlen(phone_Number))
+               {
+                  fprintf(PC, "Registered Number\n");
+                  strcpy(SMS_TOBE_SENT,"Registered Number");
+                  intAddr = iiz - i;
+                  //registered=1;
+                  //fprintf(PC,"intaddress: %i\n",intAddr);
+                  return intAddr;
+               }
+            }
+         }
+         else
+            i=0;      
+      }while((EEchar != '@') && (iiz != 242));
+      fprintf(PC, "Unregistered Number\n");
+   }         
+   return 254;
+}
+
+void SetGSMTime(char *clockSetting) // this function sets the GSM time
+{
+   char *ptrx=NULL;
+   char *ptrx1=NULL;
+   char clockx[30] = {};
+   strcpy(clockx,clockSetting);
+   strcpy(DESIRED_RESPONSE, "+CCLK: ");
+   delay_ms(100);
+   clear_buffer();
+   fprintf(SERIAL_INT, "AT+CCLK=\"%s\"\r",clockx);
+   if (GetResponse())
+      fprintf(PC,"Clock set\n");
+   do {
+      clear_buffer();
+      fprintf(SERIAL_INT,"AT+CCLK?\r");
+      delay_ms(300);
+      ptrx = GetResponse();
+   }while(!ptrx);
+   strcpy(TOKEN,"\"");
+   ptrx1 = strtok(ptrx,TOKEN);
+   fprintf(PC,"GSM clock=%s\n",ptrx1);
+   strcpy(funcReturnVar,ptrx1);
+}
+
+short readSMS(int msgNum)
+{
+   char *orig_str=NULL;
+   char *ptrx=NULL;
+   char msg_stat[3]={};
+   char msg_date[20]={};
+   char msg_time[20]={};
+   
+   strcpy(TOKEN, ",\"\n\r#");
+   strcpy(DESIRED_RESPONSE, "+CMGR: ");
+   fprintf(SERIAL_INT,"AT+CMGR=%i\r", msgNum);
+   delay_ms(300);
+   orig_str = GetResponse();
+   delay_ms(100);
+   fprintf(PC,"r=%s\n",orig_str);
+   if(orig_str) {
+      if(*orig_str!='0') {
+         ptrx = strtok(orig_str, TOKEN); // status of the message
+         strcpy(msg_stat,ptrx);
+         ptrx = strtok(0, TOKEN); // number of the sender
+         if(*ptrx == '+')
+         {
+            ptrx += 2;  // remove the +63
+            *ptrx = '0'; // replace with the character '0'
+         }
+         strcpy(MSG_SENDER,ptrx);
+         ptrx = strtok(0, TOKEN); // date
+         strcpy(msg_date,ptrx);
+         ptrx = strtok(0, TOKEN); // time
+         strcpy(msg_time,ptrx);
+         strcpy(TOKEN, "\n\r");
+         ptrx = strtok(0, TOKEN); // message
+         strcpy(MSG_DATA,ptrx);
+         //ptrx = strtok(0, TOKEN); // message
+         //strcpy(MSG_DATA1,ptrx);
+         return 1;
+      }
+      else 
+         //fputs("Invalid Message Number", PC);
+         return 0;
+      
+   }
+   
+   //else display_message();
+
+   // disable GSM
+   //output_low(RTS);
+}
+
+
+/*
+void RealTime_acquire() // ------------- to acquire real time from gsm rtc
+{  
+   
+   char temp[30]={};
+   char *ptr=NULL;
+   char *cutx=NULL;
+   char sub[30]={};   
+
+
+   strcpy(DESIRED_RESPONSE, "+CCLK: ");
+   clear_buffer();
+   do {delay_ms(100);
+      fprintf(SERIAL_INT,"AT+CCLK?\r");
+      delay_ms(200);
+      ptr = GetResponse();
+   }while(!ptr);
+   strcpy(sub,RXD_DATA);
+   if (ptr) {
+      strcpy(TOKEN,"\"");
+      strtok(sub,TOKEN);
+      strcpy(TOKEN,",");
+      cutx = strtok(0,TOKEN);
+      strcpy(temp,"03/01/01"); // default time
+      ptr = NULL;
+      //if (!stricmp(cutx,temp))
+      //   ptr = SetTImeManually();
+      //else
+      //{
+         strcpy(DESIRED_RESPONSE, "+CCLK: ");
+         clear_buffer();
+         do {
+            fprintf(SERIAL_INT,"AT+CCLK?\r");
+            delay_ms(200);
+            ptr = GetResponse();
+         }while(!ptr);
+      //}
+      InsertTimeToVariables(ptr);
+   }
+   else 
+      fprintf(PC,"rtc failed..\n");
+}
+*/
+
+void GsmManualCommands()
+{
+   int1 gsmCommand=1;
+   while(gsmCommand == 1)
+   {
+      fprintf(PC,"Enter GSM Command\n");
+      getDataFromPC();
+      delay_ms(10);
+      fprintf(PC, "from PC=%s\n",FROMSERIALPC);
+      if (strcmp(FROMSERIALPC,"EXIT")==0)
+      {
+         gsmCommand=0;
+         break;
+      }
+      clear_buffer();
+      fprintf(SERIAL_INT, "%s\r",FROMSERIALPC);
+      delay_ms(200);
+      //fprintf(PC,"cnt=%i\n",strlen(RXD_DATA));
+      fprintf(PC,"DATA=%s\n",RXD_DATA);
+   }
+   
+   
+   //while(1)
+   //{
+      
+   //}
+}
+
+void getModuleNumber()
+{
+   char *ptrx=NULL;
+   strcpy(TOKEN,"\"");
+   strcpy(DESIRED_RESPONSE, "+CPBR: 1,");
+   clear_buffer();
+   delay_ms(200);
+   fprintf(SERIAL_INT, "AT+CPBR=1\r"); // sms indications set
+   ptrx = strtok(GetResponse(),TOKEN);
+   fprintf(PC,"MODULE NUM: %s\n",ptrx);
+   delay_ms(50);
+}
+
+
+/*
+A = ACQUIRE DATA
+S = HEALTH STATUS
+C = SENDING TIME
+P = PASSWORD
+G = GSN UNIQUE ID
+U = UNLI
+D = DATA
+M = MANUAL RESET
+L = LIST
+Q = NEW SERVER NUMBER
+R = REGISTER
+F = FIRMWARE
+T = TIME AND DATE
+W = WATER TIDE STAMP
+
+*/
+
+int1 gsmInquire(char *msgdata,int1 regAlready)
+{
+   int replx=0;
+   char temp[20]={};
+   char startx[5]={};
+   char endx[5]={};
+   
+   char *txtPtr=NULL;
+   char phoneNum[15]={};
+   char timeSet[25]={};
+   char *msgP1=NULL;
+   char *msgP2=NULL;
+   char *msgP3=NULL;
+   char *msgP4=NULL;
+   char *msgP5=NULL;
+   
+   int16 endpx=0;
+   int16 startpx=0;
+   
+   strcpy(TOKEN, " ");
+   msgP1 = strtok(msgdata, TOKEN); //command
+   msgP2 = strtok(0, TOKEN); //password
+   msgP3 = strtok(0, TOKEN); //value
+   msgP4 = strtok(0, TOKEN); //flash start
+   msgP5 = strtok(0, TOKEN); //flash end
+   
+   readDataEEprom(EEPROM_PASSWORD);
+   strcpy(temp,funcReturnVar);
+   if (!stricmp(msgP2,temp)) //-------- validate if password=true
+   {
+      if (regAlready)
+      {
+         if (!stricmp(msgP1,"HEALTH")) // HEALTH STATUS ------> HEALTH <space> <PASSWORD>
+         {            
+            //strcpy(phoneNum,MSG_SENDER); //--> since msg_sender value is changed in getting load
+            logger_health_status();
+            sprintf(SMS_TOBE_SENT,"H-%s",funcReturnVar);
+            //strcpy(MSG_SENDER,phoneNum); 
+            fprintf(PC,"Health- %s\n",funcReturnVar);
+            return 1;
+         }
+         else if(!stricmp(msgP1,"QUERY")){   //QUERY <space> <PASSWORD>
+            char charx = NULL;
+            charx='+';
+            
+            strcpy(SMS_TOBE_SENT,"Query-");
+          
+            dateTimeStatus();
+            strcat(SMS_TOBE_SENT,"DT:");           //datetime
+            strcat(SMS_TOBE_SENT,funcReturnVar);
+            strncat(SMS_TOBE_SENT,&charx,1);
+            
+            strcat(SMS_TOBE_SENT,"F:");     //for firmware
+            strcat(SMS_TOBE_SENT,FIRMWARE);
+            strncat(SMS_TOBE_SENT,&charx,1);
+            
+            readDataEEprom(EEPROM_SENDING_TIME);   //sending time
+            //strcpy(strx,funcReturnVar);         
+            strcat(SMS_TOBE_SENT,"ST:");
+            strcat(SMS_TOBE_SENT,funcReturnVar);
+            strncat(SMS_TOBE_SENT,&charx,1);
+            
+            strcat(SMS_TOBE_SENT,"SN:");      //server number
+            strcat(SMS_TOBE_SENT,SERVERNUMBER);
+            strncat(SMS_TOBE_SENT,&charx,1);
+            
+            strcat(SMS_TOBE_SENT,"Type:");      //sensor configuration
+            strcat(SMS_TOBE_SENT,SENSORCONFIG);
+            strncat(SMS_TOBE_SENT,&charx,1);
+            
+            strcat(SMS_TOBE_SENT,"PB:");
+            strcat(SMS_TOBE_SENT,PBOARDCONFIG);
+            return 1;
+         }
+         else if(!stricmp(msgP1,"ACQUIREDATA")) // ACQUIREDATA <space> <PASSWORD> <startPage> <endPage>
+         {
+            if (msgP3)
+            {
+               strcpy(startx,msgP3);
+               strcpy(endx,msgP4);
+               
+               startpx = atol(startx);
+               endpx = atol(endx);
+               
+               if (endpx < startpx)
+               {
+               for (yy=startpx;yy<=DTFNbrPage;yy++)
+               {
+                  fprintf(PC,"\npage=%ld\n",yy);
+                  DTFReadFromPage(yy,1);
+               }
+               startpx=0;
+               }
+            
+               for (yy=startpx;yy<=endpx;yy++)
+               {
+                  fprintf(PC,"\npage=%ld\n",yy);
+                  DTFReadFromPage(yy,1);
+               }
+   //!               replx = sendFlashDataViaSMS(1, startx, endx);
+   //!               fprintf(PC,"replx = %i\n",replx);
+   //!               sprintf(SMS_TOBE_SENT,"DATA - %i",replx);
+   /*               
+                  if (replx ==0)
+                     strcpy(SMS_TOBE_SENT,"WRONG FORMAT");
+                  else if (replx ==1)
+                     strcpy(SMS_TOBE_SENT,"BATTERY LOW");
+                  else if (replx ==2)
+                     strcpy(SMS_TOBE_SENT,"MESSAGE SENDING FAILED");
+                  else if (replx ==3)
+                     strcpy(SMS_TOBE_SENT,"END CHAR");
+                  else if (replx ==4)
+                     strcpy(SMS_TOBE_SENT,"INVALID MESSAGE");   
+                  else if (replx ==5)
+                     strcpy(SMS_TOBE_SENT,"MESSAGE SENDING COMPLETE");                  
+   */                  
+                  fprintf(PC,"DATA = %s\n",SMS_TOBE_SENT);
+                  return 1;
+            }
+         }
+         else if(!stricmp(msgP1,"FIRMWARE")) // FIRMWARE <space> <PASSWORD>
+         {
+            sprintf(SMS_TOBE_SENT,"F-%s",FIRMWARE);
+            return 1;
+         }
+//!         else if(!stricmp(msgP1,"RESTORE")) //RESTORE <space> <PASSWORD>
+//!         {
+//!            char charx = NULL;
+//!            charx='+';
+//!            char strx[20]={};
+//!            
+//!            strcpy(SMS_TOBE_SENT,"Restored-");
+//!            
+//!            AddDataEEprom("15",EEPROM_SENDING_TIME);  //store 15 mins in sending time
+//!            readDataEEprom(EEPROM_SENDING_TIME);
+//!            strcpy(strx,funcReturnVar);
+//!            SENDING_TIME = atoi(strx);
+//!            //fprintf(PC,"Sending time=%i\n",SENDING_TIME);
+//!            strcat(SMS_TOBE_SENT,"ST:");
+//!            strcat(SMS_TOBE_SENT,strx);
+//!            strncat(SMS_TOBE_SENT,&charx,1);
+//!            
+//!            AddDataEEprom("BSWM",EEPROM_SENSOR_TYPE); //store "BSWM" as password
+//!            readDataEEprom(EEPROM_SENSOR_TYPE);
+//!            strcat(SMS_TOBE_SENT,"Type:");
+//!            strcpy(SENSORCONFIG,funcReturnVar);
+//!            strcat(SMS_TOBE_SENT,SENSORCONFIG);
+//!            strncat(SMS_TOBE_SENT,&charx,1);
+//!            
+//!            AddDataEEprom("BSWM",EEPROM_PASSWORD);
+//!            strcat(SMS_TOBE_SENT,"Password:");
+//!            strcat(SMS_TOBE_SENT,funcReturnVar);
+//!            strncat(SMS_TOBE_SENT,&charx,1);
+//!            
+//!            DelEepromPhoneNum();    //delete all registered numbers
+//!            strcat(SMS_TOBE_SENT,"All registered numbers deleted");
+//!            strncat(SMS_TOBE_SENT,&charx,1);
+//!            
+//!            AddDataEEprom("11",EEPROM_PBOARD_CONFIG);
+//!            readDataEEprom(EEPROM_PBOARD_CONFIG);
+//!            strcpy(PBOARDCONFIG,funcReturnVar);
+//!            strcat(SMS_TOBE_SENT,"PB:");
+//!            strcat(SMS_TOBE_SENT,PBOARDCONFIG);
+//!            strncat(SMS_TOBE_SENT,&charx,1);
+//!            
+//!            RESETCPU=0;
+//!            ShutDownGSM();
+//!            fprintf(PC,"Restarting GSM...\n");
+//!            delay_ms(10000);
+//!            InitGSM();
+//!            rtc_acquire_sync();             // sync datetime from rtc chip to both GSM and MCU
+//!            dateTimeStatus();                //for getting the date and time
+//!            strcat(SMS_TOBE_SENT,"DT:");
+//!            strcat(SMS_TOBE_SENT,funcReturnVar);            
+//!            return 1;
+//!         }
+         else if(!stricmp(msgP1,"SENDINGTIME")) //SENDING TIME ------> SENDINGTIME <space> <PASSWORD> <SENDING TIME>
+         {                                     
+            if (msgP3)
+            {
+               AddDataEEprom(msgP3,EEPROM_SENDING_TIME); 
+               strcpy(temp,msgP3);
+               SENDING_TIME = atoi(temp);
+               fprintf(PC,"SENDING TIME = %i\n",SENDING_TIME);
+               sprintf(SMS_TOBE_SENT,"ST-%s",temp);
+               return 1;
+            }
+         }
+         
+/*         
+         else if(!stricmp(msgP1,"BATTERYUSED")) //BATTERYUSED ------> BATTERYUSED <space> <PASSWORD> <BATTERY VALUE>
+         {                                     
+            if (msgP3)
+            {
+               strcpy(temp,msgP3);
+               writeCharEE(temp[0],346);
+               BATTERYUSED = atoi(temp);
+               fprintf(PC,"BATTERYUSED = %i\n",BATTERYUSED);
+               strcpy(SMS_TOBE_SENT,"BATTERYUSED = ");
+               strcat(SMS_TOBE_SENT,temp);
+               return 1;
+            }
+         }
+*/         
+         else if(!stricmp(msgP1,"PASSWORD")) //PASSWORD -------> PASSWORD <space> <PASSWORD> <space> <NEW PASSWORD>
+         {
+            if (msgP3)
+            {
+               strcpy(temp,msgP3);
+               //writeCharEE('$',EEPROM_PASSWORD_CHECK); // write to password check
+               AddDataEEprom(temp,EEPROM_PASSWORD);
+               fprintf(PC,"NEW PASSWORD = %s\n",temp);
+               sprintf(SMS_TOBE_SENT,"NPASSWORD-%s",temp);
+               if(debugpsswrdflag==0){
+                  SendSMS(SERVERNUMBER);}
+               debugpsswrdflag = 0;   
+               return 1;
+            }
+         }
+         else if(!stricmp(msgP1,"GSN")) //GSN Unique ID ------> GSN <space> <PASSWORD>
+         {                               
+            gsnId();
+            sprintf(SMS_TOBE_SENT,"GSN-%s",funcReturnVar);
+            //strcpy(SMS_TOBE_SENT,funcReturnVar);
+            return 1;
+         }
+         
+//!         else if(!stricmp(msgP1,"GSM_OPT")) //GSM operator ------> GSM_OPT <space> <PASSWORD> <OPERATOR>
+//!         {                               
+//!            if (msgP3)
+//!            {
+//!               strcpy(temp,msgP3);
+//!               if (temp[0] == '0')
+//!                  strcpy(SMS_TOBE_SENT,"opt=SMART");
+//!               else if (temp[0] == '1')
+//!                  strcpy(SMS_TOBE_SENT,"opt=GLOBE");
+//!               fprintf(PC,"%s\n",SMS_TOBE_SENT);
+//!               return 1;
+//!            }
+//!         }
+         
+         else if(!stricmp(msgP1,"SENSORPOLL")) //SENSORPOLL ------> SENSORPOLL <space> <PASSWORD>
+         {            
+            sensorPoll();
+            strcpy(SMS_TOBE_SENT, REALDATA);
+            /*
+            if (SENSORTYPE=='W')
+            {
+               //strDavies(0); //-->for davies
+               SmsStat = vaiSms(); //--> for vaisala
+            }
+            else if (SENSORTYPE=='R')
+            {
+               smsStat = rainSms();
+            }
+            else if (SENSORTYPE=='L')
+            {
+               smsStat = levelSms();
+            }
+            else if (SENSORTYPE=='P')
+            {
+               smsStat = RainPressSms();
+            }
+            
+            if (SmsStat)
+               strcpy(Msg, REALDATA);
+            else
+               strcpy(Msg, "No data received from Sensor");
+            */
+            
+            return 1;
+         }
+         else if(!stricmp(msgP1,"RESET")) //RESET ------> RESET <space> <PASSWORD>
+         {            
+            strcpy(phoneNum,MSG_SENDER);
+            AddDataEEprom(phoneNum,EEPROM_RESET_NUMBER);
+            reset_cpu();
+            delay_ms(5000);
+            return 1;
+         }
+         else if(!stricmp(msgP1,"LISTPHONENUM")) //LISTPHONENUM ------> LISTPHONENUM <space> <PASSWORD>
+         {            
+            listPhNum(22);
+            fprintf(PC,"PHONE NUMBERS:\n%s\n",funcReturnVar);
+            sprintf(SMS_TOBE_SENT,"LIST-\n%s\n",funcReturnVar );
+            //strcpy(SMS_TOBE_SENT, txtPtr);
+            return 1;
+         }
+         else if(!stricmp(msgP1,"SERVERNUMBER")) //NEW SERVER NUMBER ------> SERVERNUMBER <space> <PASSWORD> <NUMBER>
+         {
+            if (msgP3)
+            {
+               AddDataEEprom(msgP3,EEPROM_SERVER_NUMBER);
+               strcpy(SERVERNUMBER,msgP3);
+               sprintf(SMS_TOBE_SENT,"NSN-%s\n",SERVERNUMBER);
+//!               strcpy(SMS_TOBE_SENT,"NSERVERNUMBER - ");
+//!               strcat(SMS_TOBE_SENT,SERVERNUMBER);
+               fprintf(PC,"NEW SERVER NUMBER = %s\n",SERVERNUMBER);
+               if(debugserverflag==0){
+                  SendSMS(SERVERNUMBER);}
+               debugserverflag = 0; //to reset the flag
+               return 1;
+            }
+         }
+         else if(!stricmp(msgP1,"ASTISERVERNUM"))
+         {
+            if (msgP3)
+            {
+               AddDataEEprom(msgP3,EEPROM_ASTISERVERNUM);
+               strcpy(ASTISERVERNUM,msgP3);
+               strcpy(SMS_TOBE_SENT,"NEW ASTI SERVERNUMBER - ");
+               strcat(SMS_TOBE_SENT,ASTISERVERNUM);
+               fprintf(PC,"%s\n",SMS_TOBE_SENT);
+               //SendSMS(ASTISERVERNUM);  //jas ASTISERVERNUM
+               delay_ms(100);
+               strcpy(temp,"1");
+               writeCharEE(temp[0],EEPROM_TWOSERVERS);
+               twoservers = atoi(temp);
+               //sprintf(SMS_TOBE_SENT,"ASTISERVER - %i",twoservers);
+               //fprintf(PC,"%i\n",twoservers);  //jas
+               return 1;
+            }
+         }
+         //jas
+         else if(!stricmp(msgP1,"NOASTISERVER"))   //NOASTISERVER PASSWORD 0
+         {
+            if (msgP3)
+            {
+//!               char msg[40]={"Sending to ASTI Server deactivated."};
+//!               strcpy(SMS_TOBE_SENT,msg);
+//!               twoservers=0;  //jas
+//!               return 1;
+               strcpy(temp,msgP3);
+               writeCharEE(temp[0],EEPROM_TWOSERVERS);
+               twoservers = atoi(temp);
+               sprintf(SMS_TOBE_SENT,"ASTISERVER - %i",twoservers);
+               strcpy(ASTISERVERNUM,NULL);
+               //fprintf(PC,"%i\n",twoservers);
+               return 1;
+            }
+         }
+//!         else if(!stricmp(msgP1,"IPADD")) //IPADD ------> IPADD <space> <PASSWORD> <IPADD>
+//!         {
+//!            if (msgP3)
+//!            {
+//!               AddDataEEprom(msgP3,EEPROM_SERVER_IP);
+//!               strcpy(SERVERIP,msgP3);
+//!               strcpy(SMS_TOBE_SENT,"IPADD - ");
+//!               strcat(SMS_TOBE_SENT,SERVERIP);
+//!               fprintf(PC,"%s\n",SMS_TOBE_SENT);
+//!               return 1;
+//!            }
+//!         }
+         
+         else if(!stricmp(msgP1,"SATENABLE")) //SATELLITE ENABLE ------> SAT_EN <space> <PASSWORD> <space> <VALUE>
+         {
+            if (msgP3)
+            {
+               strcpy(temp,msgP3);
+               writeCharEE(temp[0],EEPROM_SATELLITE_STATUS);
+               SATELLITE_FLAG = atoi(temp);
+               sprintf(SMS_TOBE_SENT,"SATENABLE - %i",SATELLITE_FLAG);
+               fprintf(PC,"%s\n",SMS_TOBE_SENT);
+               return 1;
+            }
+         }
+         
+//!         else if(!stricmp(msgP1,"DYNAMICSEND")) //DYNAMIC SENDING ------> DYNAMICSEND <space> <PASSWORD> <space> <VALUE>
+//!         {
+//!            if (msgP3)
+//!            {
+//!               strcpy(temp,msgP3);
+//!               writeCharEE(temp[0],EEPROM_RAINDYNAMIC_STATUS);
+//!               dynamicSENDING = atoi(temp);
+//!               sprintf(SMS_TOBE_SENT,"DYNAMICSEND - %i",dynamicSENDING);
+//!               fprintf(PC,"%s\n",SMS_TOBE_SENT);
+//!               return 1;
+//!            }
+//!         }
+         else if(!stricmp(msgP1,"DATETIME")) //DATE AND TIME --------> DATETIME <space> PASSWORD <space> <"YY/MM/DD,HH:MM:SS">
+         {
+            if (msgP3)
+            {
+               strcpy(timeSet,msgP3);
+               fprintf(PC,"Date,time Set=%s\n",timeSet);
+               InsertTimeToVariables(timeSet);
+               rtcCreateTime();
+               dateTimeStatus();
+               sprintf(SMS_TOBE_SENT,"DT-%s\n",funcReturnVar);
+//!               strcpy(SMS_TOBE_SENT,"CURRENT DATE and TIME=");
+//!               strcat(SMS_TOBE_SENT,funcReturnVar);
+               fprintf(PC,"CURRENT DATE and TIME = %s\n",funcReturnVar);
+               return 1;
+            }
+         }
+         else if(!stricmp(msgP1,"SENSORCONFIG")) //SENSORCONFIG --------> SENSORCONFIG <space> PASSWORD <space> SENSOR TYPE VALUE
+         {
+            if (msgP3)
+            {
+               if((!stricmp(msgP3,"WL")) || (!stricmp(msgP3,"RG")) || (!stricmp(msgP3,"TM")) || (!stricmp(msgP3,"RDR")) || (!stricmp(msgP3,"RDRR"))){
+                  strcpy(temp,msgP3);
+                  AddDataEEprom(temp,EEPROM_SENSOR_TYPE);
+                  strcpy(SENSORCONFIG,temp);
+                  SensorInitialize();
+                  sprintf(SMS_TOBE_SENT,"Type-%s\n",SENSORCONFIG);
+   //!               strcpy(SMS_TOBE_SENT,"SENSORCONFIG =");
+   //!               strcat(SMS_TOBE_SENT,SENSORCONFIG);
+                  fprintf(PC,"NEW SENSORCONFIG = %s\n",SENSORCONFIG);
+                  if(debugconfigflag == 0){
+                     SendSMS(SERVERNUMBER);}
+                  debugconfigflag = 0;
+                  return 1;}
+               else{
+                  strcpy(SMS_TOBE_SENT,"Sensor type not supported.\n");
+                  return 1;
+                  }
+            }
+         }        
+         else if(!stricmp(msgP1,"PBOARDCONFIG")) //PBOARDCONFIG --------> PBOARDCONFIG <space> PASSWORD <space> POWERCONFIG VALUE
+         {
+            if (msgP3)
+            {
+               strcpy(temp,msgP3);
+               AddDataEEprom(temp,EEPROM_PBOARD_CONFIG);
+               strcpy(PBOARDCONFIG,temp);
+               powerBoostConfig(0);
+               sprintf(SMS_TOBE_SENT,"PB-%s\n",PBOARDCONFIG);
+//!               strcpy(SMS_TOBE_SENT,"PBOARDCONFIG=");
+//!               strcat(SMS_TOBE_SENT,PBOARDCONFIG);
+               fprintf(PC,"NEW power board config = %s\n",PBOARDCONFIG);
+               return 1;
+            }
+         }         
+//!         else if(!stricmp(msgP1,"UPGRADEFIRMWARE")) //UPGRADEFIRMWARE <PASSWORD> MODE
+//!         {
+//!            if (msgP3)
+//!            {
+//!               if(openConGprs()==1)
+//!               {
+//!                   if (!stricmp(msgP3,"CONT")) //continue bootloading
+//!                   {
+//!                     if (GPRS_FIRMWARE_STATUS == 1)
+//!                        replx = rcvMsgGPRS(1);
+//!                     else
+//!                     {
+//!                        strcpy(SMS_TOBE_SENT,"GPRS_STAT=0");
+//!                        return 1;
+//!                     }                        
+//!                   }  
+//!                   else if (!stricmp(msgP3,"START"))
+//!                     replx = rcvMsgGPRS(0);  //start fresh
+//!                   else if (!stricmp(msgP3,"STOP")) 
+//!                   {
+//!                     GPRS_FIRMWARE_STATUS=0;
+//!                     strcpy(GPRS_LASTDATA_STORED,"");
+//!                     strcpy(SMS_TOBE_SENT,"GPRS_FIRMWARE_STATUS=0");
+//!                     return 1;
+//!                   }
+//!                   if (replx == 1)
+//!                   {
+//!                     strcpy(SMS_TOBE_SENT,"CONNECTION LOST");
+//!                     return 1;
+//!                   }                    
+//!                   else
+//!                     return 0;
+//!               }                   
+//!               else
+//!               {
+//!                  strcpy(SMS_TOBE_SENT,"GPRS CONNECTION ERR");
+//!                  return 1;
+//!               }
+//!            }               
+//!         }
+         /*
+         else if (*msgP1=='W')//WATER TIDE STAMP --------> WATERTIDE <space> PASSWORD <space> <VALUE>
+         {
+            
+            if (msgP3)
+            {
+               
+               tideStamp = atof(msgP3);
+               fprintf(PC, "Tide Stamp: %f m",tideStamp);
+               
+               sensorMeasuredDistance = getDistance();
+               fprintf(PC, "\nSensor Measured Distance: %f m",sensorMeasuredDistance); 
+               TOTALSENSORHEIGHT = sensorMeasuredDistance+tideStamp;
+               sprintf(temp, "%2.2f", TOTALSENSORHEIGHT);
+               AddDataEEprom(temp,12);
+               strcpy(temp,readDataEEprom(12));
+               TOTALSENSORHEIGHT=atof(temp);
+               fprintf(PC, "\nTotal Sensor Height: %2.2f meters\n", TOTALSENSORHEIGHT);
+               strcpy(SMS_TOBE_SENT,"Total Sensor Height=");
+               strcpy(SMS_TOBE_SENT,temp);
+               return 1;
+            }
+         }
+         */
+         else if(!stricmp(msgP1,"REGISTER2")) //REGISTER2 ------> REGISTER2 <space> <PASSWORD> <Number to rgister>
+         {  
+            register2flag=1;
+            //fprintf(PC,"register2flag: %i\n",register2flag);
+            if (msgP3)
+            {
+               //strcpy(phoneNum,MSG_SENDER);
+               int reg2validate;
+               
+               reg2validate = ValidateNum(msgP3);
+               //fprintf(PC,"reg2: %i\n",reg2validate);
+               if(reg2validate==31){   //this is needed so that the arQ will reply if the format is invalid like 917*****
+                  strcpy(SMS_TOBE_SENT,"Invalid format.");
+                  return 1;
+               }
+               else{
+                  AddDataEEprom(msgP3,1);
+                  if(registered==1){
+                     //fprintf(PC,"imhere2\n");
+                     strcpy(SMS_TOBE_SENT,"Number is already registered.");
+                     fprintf(PC,"%s\n",SMS_TOBE_SENT);
+                     registered=0;
+                     return 1;}
+                  else{
+                     sprintf(SMS_TOBE_SENT,"REG2-%s",msgP3);
+                     fprintf(PC,"REGISTER2 = %s\n",msgP3);
+                     return 1;}
+                  }
+                  
+               }
+         }
+         else if(!stricmp(msgP1,"REGISTER")) //THIS IS TO CHECK IF THE NUMBER IS ALREADY REGISTERED
+         {
+            //fprintf(PC,"imhere\n");
+            strcpy(SMS_TOBE_SENT,"Number is already registered.");
+            fprintf(PC,"%s\n",SMS_TOBE_SENT);
+            //registered=0;
+            return 1;
+         }
+         else if(!stricmp(msgP1,"DELETE")) //DELETE <space> <PASSWORD> <Number to be deleted>
+         {
+            if(msgP3)
+            {
+            strcpy(phoneNum,msgP3);
+            DelOneNum(phoneNum);
+            strcpy(SMS_TOBE_SENT,funcReturnVar);
+            fprintf(PC,"%s\n",funcReturnVar);
+            return 1;         
+            }
+         }
+         else
+         {
+            fprintf(PC,"Invalid Command\n");
+            return 0;
+         }
+      }
+      else
+      {
+         if(!stricmp(msgP1,"REGISTER")) //REGISTER ------> REGISTER <space> <PASSWORD>
+         {
+            strcpy(phoneNum,MSG_SENDER);
+            AddDataEEprom(phoneNum,1);
+            strcpy(SMS_TOBE_SENT,"NUMBER REGISTERED");
+            fprintf(PC,"%s\n",SMS_TOBE_SENT);
+            return 1;
+         }
+         else
+         {
+            fprintf(PC,"Invalid Command\n");
+            strcpy(SMS_TOBE_SENT,"Invalid Command.");
+            return 1;
+         }
+      }
+   }
+   else
+   {
+      if(!stricmp(msgP1,"BACKDOOR"))
+      {
+         readDataEEprom(EEPROM_PASSWORD);
+         sprintf(SMS_TOBE_SENT,"Password-%s",funcReturnVar);
+         //strcpy(SMS_TOBE_SENT,funcReturnVar);
+         return 1;
+      }
+      else
+      {
+         fprintf(PC,"Invalid Command\n");
+         strcpy(SMS_TOBE_SENT,"Invalid Command.");
+         return 1;
+      }
+   }
+}
+
+void proc_receive()
+{
+   char phoneNumx[15]={};
+   int msgNumxx=0;
+   int1 forRegx=0;
+   
+   msgNumxx = processRcv();
+   delay_ms(100);
+   switch (msgNumxx)
+   {
+      case 0: // invalid data
+         break;
+      case 100: // receive call
+         if (ValidateNum(MSG_SENDER)!=254)
+         {
+            //DEBUGMODE = '*';
+         }
+         else
+            fprintf(PC,"Invalid User\n");
+         break;
+      case 99: //receive data through gprs`
+         break;     
+      default: //receive text msg
+         readSMS(msgNumxx);
+         REPLY_TO_SENDER=1;
+         if (ValidateNum(MSG_SENDER)!=254)
+            forRegx = 1;
+         else
+            forRegx = 0;
+          
+         strcpy(phoneNumx,MSG_SENDER);
+//!         fprintf(PC,"%s\n",MSG_DATA);
+//!         fprintf(PC,"forregx: %i\n",forRegx);
+         if(gsmInquire(MSG_DATA,forRegx))
+         {
+            clear_buffer();
+            delay_ms(200);
+            SendSMS(phoneNumx);
+         }
+         REPLY_TO_SENDER=0;
+         DelSMS(msgNumxx);
+         break;
+   }
+}
+

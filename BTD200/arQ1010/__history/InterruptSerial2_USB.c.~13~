@@ -1,0 +1,20 @@
+#use rs232(baud=57600, xmit=PIN_G1, rcv=PIN_G2, stream=PC)
+
+char INTSERIAL2USB_RXD[255]={};
+int1 INTSERIAL2USB_FLAG=0;
+int INTSERIAL2USB_CNTR=0;
+
+#int_rda2 //RS232 receive data available in buffer 2
+
+void rda2_isr(void)
+{
+   INTSERIAL2USB_FLAG = 1;
+   INTSERIAL2USB_RXD[INTSERIAL2USB_CNTR++]=fgetc(PC);
+}
+
+void clear_IntSerial2USB()
+{  
+   INTSERIAL2USB_RXD[INTSERIAL2USB_CNTR-1]='\0';
+   INTSERIAL2USB_FLAG=0;
+   INTSERIAL2USB_CNTR=0;
+}

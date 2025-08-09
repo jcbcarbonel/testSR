@@ -1,0 +1,198 @@
+
+void counterNewYear()
+{
+   char *ptr=NULL;
+   char temp[20]={};
+   
+   if (MIN == 0 && HOUR == 0 && DAY == 31 && MONTH == 12)
+   {
+      YEAR_PREV = YEAR - 2000;
+      fprintf(USB, "YEAR_PREV=%i\n",YEAR_PREV);
+   }
+   
+   if (MIN == 0 && HOUR == 0 && DAY == 1 && MONTH == 1)
+   {
+      strcpy(DESIRED_RESPONSE, "+CCLK: ");
+      delay_ms(100);
+      YEAR_PREV++;
+      itoa(YEAR_PREV,10,InterruptUSB_Rxd);
+      strcpy(temp,"/01/01,00:00:03");
+      strcat(InterruptUSB_Rxd,temp);
+      //strcat(InterruptUSB_Rxd,"/01/01,00:00:03");
+      fprintf(USB, "from COUNTERNEWYEAR =%s\n",InterruptUSB_Rxd);
+      clear_InterruptUSB();
+      fprintf(GSM, "AT+CCLK=\"%s\"\r",InterruptUSB_Rxd);
+      strcpy(InterruptUSB_Rxd,"");
+      if (GetResponse())
+         fprintf(USB,"clock set\n");
+      delay_ms(200);
+      clear_InterruptUSB();
+      do {
+         fprintf(GSM,"AT+CCLK?\r");
+         delay_ms(200);
+         ptr = GetResponse();
+      }while(!ptr);
+   }
+}
+
+char *convertDateParam(int param)
+{
+ char *funcSmallStr;
+   
+   //fprintf (USB,"param %i\n", param);
+   
+   if (param < 10)
+      sprintf(funcSmallStr,"0%i",param);
+   else
+      sprintf(funcSmallStr,"%i",param);
+   
+   //fprintf (USB,"funSmallSTr %s\n", funcSmallStr);
+   
+   //delay_ms(50);
+   return funcSmallStr;
+ }
+
+char *getMcuDateTime() 
+// create a string composed of date and time in the format YY/MM/DD,HH:MM:SS
+// store it in funcReturnVar variable 
+{
+   char strDateTime[20] ={};
+ //  char *strDateTime;
+   char charx = NULL;
+   char *ptr = NULL;
+
+      
+   charx='/'; 
+  
+   //fprintf (USB,"YEAR: %i\n",YEAR);  
+//!   ptr = convertDateParam(YEAR);
+//!   strcpy(strDateTime,ptr);
+   strcpy(strDateTime,convertDateParam(YEAR));
+//!   strncat(strDateTime,&charx,1);
+
+//!   ptr = convertDateParam(MONTH);
+//!   strcat(strDateTime,ptr);
+   strcat(strDateTime,convertDateParam(MONTH));
+//!   strncat(strDateTime,&charx,1);
+   
+//!   charx=',';
+   
+//!   ptr = convertDateParam(DAY);
+//!   strcat(strDateTime,ptr);
+   strcat(strDateTime,convertDateParam(DAY));
+   strncat(strDateTime,&charx,1);   
+
+//!   charx=':';
+   
+//!   ptr = convertDateParam(HOUR);
+//!   strcat(strDateTime,ptr);
+   strcat(strDateTime,convertDateParam(HOUR));
+//!   strncat(strDateTime,&charx,1);
+   
+//!   ptr = convertDateParam(MIN);
+//!   strcat(strDateTime,ptr);
+   strcat(strDateTime,convertDateParam(MIN));
+//!   strncat(strDateTime,&charx,1);
+
+//!   ptr = convertDateParam(SEC);
+//!   strcat(strDateTime,ptr);
+   strcat(strDateTime,convertDateParam(SEC));
+   //fprintf(USB,"Testing\n");
+//!   delay_ms(10);
+   //fprintf(USB,"strDateTime: %s\n",strDateTime);
+    
+   strcpy(globalDT, strDateTime);
+   fprintf(USB,"strDT: %s\n",strDateTime);
+   
+  // fprintf(USB,"MCU TEST: %s\n",strDateTime);
+       
+   return strDateTime;
+}
+void updateMcuDateTime(char *ptx) //converts strings to integer and change date and time values
+{
+   char *dataz=NULL;
+   char temp1[20]={};
+   char tempx[3]={};
+   
+   //fprintf(USB,"ptx: %s\n",ptx);
+   
+   strcpy(TOKEN,"/,:\"");       //yy/mm/dd,hh:mm:ss
+   strcpy(temp1,ptx);
+   
+   delay_ms(150);
+   dataz = strtok(temp1,TOKEN);
+   strcpy(tempx,dataz);
+   YEAR = atoi(tempx);
+   //YEAR = YEAR + 2000;
+   
+   dataz = strtok(0,TOKEN);
+   strcpy(tempx,dataz);
+   MONTH = atoi(tempx);
+   
+   dataz = strtok(0,TOKEN);
+   strcpy(tempx,dataz);
+   DAY = atoi(tempx);
+   
+   dataz = strtok(0,TOKEN);
+   strcpy(tempx,dataz);
+   HOUR = atoi(tempx);
+   
+   dataz = strtok(0,TOKEN);
+   strcpy(tempx,dataz);
+   MIN = atoi(tempx);
+   
+   dataz = strtok(0,TOKEN);
+   strcpy(tempx,dataz);
+   SEC = atoi(tempx);
+
+
+//!   fprintf(USB,"MCU date and time: %u/%u/%u,%u:%u:%u\n",YEAR,MONTH,DAY,HOUR,MIN,SEC);
+   
+
+   fprintf(USB,"MCU clock set\n");
+  
+}
+
+void rtc_acquire_sync()
+{ char *ptr;
+  char temp[20];
+  
+  ptr = readRtc();
+//!  fprintf(USB,"RTC date and time: %s\n",ptr);
+  
+  strcpy(temp,ptr);
+  updateMcuDateTime(temp);
+
+   strcpy(ptr, "");
+  ptr=getMcuDateTime();
+
+  fprintf(USB,"MCU date and time: %s\n",ptr);
+  
+//!    if(stopBTD200Sampling)
+//!      {ptr=getMcuDateTime();
+//!       strcpy(temp,ptr);
+//!       updateMcuDateTime(temp);
+//!      
+//!      }        
+          
+}
+
+
+//!
+//!void rtc_acquire_sync_noGSM()
+//!{
+//!   readRtc(1);
+//!   GetDateTime();
+//!   //SetGSMTime(funcReturnVar);   
+//!}
+
+//!
+//!void downloadDateTime()
+//!{
+//!   getDataFromUSB();
+//!   SetGSMTime(FROMSERIALPC);
+//!   fprintf(USB,"%s",funcReturnVar);
+//!   InsertTimeToVariables(funcReturnVar);
+//!}
+//!
+

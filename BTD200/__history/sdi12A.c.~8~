@@ -1,0 +1,194 @@
+///////////////////////////////////////////////////////////////////////////////
+   // SDI-12 standard baudrate=1200, parity=even, bit=7, stop bit=1, stream=SDI12
+   // This can be modify depending on the preffered RS232 communication
+   ///////////////////////////////////////////////////////////////////////////////
+   //#use rs232(baud=19200,BRGH1OK, parity=n, bits=8, stop=1,xmit=PIN_C6, rcv=PIN_C7, stream=PC)
+   
+   
+   ///////////////////////////////////////////////////////////////////////////////
+   // The sdi12_start is used as a pre-command for SDI-12 communication. Break is
+   // used to wake up the SDI-12 device from sleep mode. The break start with
+   // setting the transmit to high for more than 13ms then low for 9ms.
+   // Then next this is the appropriate command for the SDI-12 device.
+   ///////////////////////////////////////////////////////////////////////////////
+   
+   void sdi12A_start()
+   {
+      output_high(PIN_TX);       //set transmit to high for 13 sec
+      delay_ms(13);
+      output_low(PIN_TX);        //set transmit to low for 9 sec
+      delay_ms(9);
+   }
+   
+   ///////////////////////////////////////////////////////////////////////////////
+   // The sdi12_end is used as a post-command for SDI-12 communication. 
+   // The transmit pin is disabled to set it to high impedance
+   ///////////////////////////////////////////////////////////////////////////////
+   void sdi12A_end()
+   {
+      output_float(PIN_TX);       //set transmit to high impedance
+   }
+   
+   ///////////////////////////////////////////////////////////////////////////////
+   // This is used to receive the response of the SDI-12 device and transmit the
+   // the response to RS232.
+   //////////////////////////////////////////////////////////////////////////////
+   
+   void sdi12A_receive(int1 cpx)
+   {
+      int8 msgx=0;
+      char strx[30] = {};
+      int x=0;
+      do{
+         msgx = fgetc(SDI12);
+         strx[x++] = msgx; 
+      }while(msgx > 0x20);
+      x--;
+      strx[x] = '\0';
+      delay_ms(400);
+      if (cpx == 1)
+         strcpy(funcReturnVar,strx);
+      else
+         strcpy(funcReturnVar,"");
+   }
+   
+   
+   ///////////////////////////////////////////////////////////////////////////////
+   // The sdi12_startdata is used for start gathering the data.
+   ///////////////////////////////////////////////////////////////////////////////
+   void sdi12A_startdata(char c)
+   {
+      sdi12A_start();
+      fprintf(SDI12,"%cM!",c);
+      sdi12A_end();
+   }
+   
+   
+   ///////////////////////////////////////////////////////////////////////////////
+   // The sdi12_address is command use to know the address of the SDI-12 device.
+   ///////////////////////////////////////////////////////////////////////////////
+   void sdi12A_address()
+   { 
+      sdi12A_start();
+      fprintf(SDI12,"?!");
+      sdi12A_end();
+   }
+   
+   ///////////////////////////////////////////////////////////////////////////////
+   // The sdi12_getData is command use to get measure values.
+   ///////////////////////////////////////////////////////////////////////////////
+   void sdi12A_getData(char c)
+   {
+      sdi12A_start();
+      fprintf(SDI12,"%cD0!",c);
+      sdi12A_end();
+   }
+   
+   ///////////////////////////////////////////////////////////////////////////////
+   // The sdi12_probeID is used for getting the probe identification. .
+   ///////////////////////////////////////////////////////////////////////////////
+   void sdi12A_probeId(char c)
+   {
+      sdi12A_start();
+      fprintf(SDI12,"%cI!",c);
+      sdi12A_end();
+   }
+   
+   int1 sdi12A_process(char *cmdx)
+   {
+      int8 msgx=0;
+      char strx[30] = {};
+      char commandx[5]={};
+      int x=0;
+      int16 cnz = 0;
+      int zzz=0;
+   
+      resetx:
+      
+      restart_wdt();   
+      delay_ms(45);
+      x = 0;
+      strcpy(commandx,cmdx);
+      fprintf(PC,"SDI command=%s\n",commandx);
+//-------------------------      
+      sdi12A_start();
+      fprintf(SDI12,commandx);
+      sdi12A_end();
+//-------------------------      
+      do{
+         while(!kbhit(SDI12))
+         {
+            cnz++;
+            if (cnz >= 50000)
+            {
+               zzz++;
+               delay_ms(400);
+               cnz =0;
+               if (zzz>=5)
+               {
+                  strcpy(funcReturnVar,"");
+                  return 0;
+               }
+               goto resetx;
+            }
+         }
+         msgx = getc(SDI12);
+         strx[x++] = msgx; 
+      }while(msgx> 0x20);
+      x--;
+      strx[x] = '\0';
+      strcpy(funcReturnVar,strx);
+      delay_ms(300);
+      return 1;
+   }
+   
+   int1 sdi12A_DUAL_return(char *cmdx)
+   {
+      int sdiCNT=0;
+      int8 msgx=0;
+      char strx[30] = {};
+      char commandx[5]={};
+      int x=0;
+      int16 cnz = 0;
+      int zzz=0;
+   
+      resetx:
+      
+      restart_wdt();   
+      delay_ms(45);
+      x = 0;
+      strcpy(commandx,cmdx);
+      fprintf(PC,"SDI command=%s\n",commandx);
+//-------------------------      
+      sdi12A_start();
+      fprintf(SDI12,commandx);
+      sdi12A_end();
+//-------------------------      
+      do{
+         while(!kbhit(SDI12))
+         {
+            cnz++;
+            if (cnz >= 50000)
+            {
+               zzz++;
+               delay_ms(400);
+               cnz =0;
+               if (zzz>=5)
+               {
+                  strcpy(funcReturnVar,"");
+                  return 0;
+               }
+               goto resetx;
+            }
+         }
+         msgx = getc(SDI12);
+         strx[x++] = msgx; 
+      }while(msgx> 0x20);
+      x--;
+      strx[x] = '\0';
+      sdiCNT++;
+      fprint(PC,"SDI_data%i=%s\n",strx);
+      strcpy(funcReturnVar,strx);
+      delay_ms(300);
+      return 1;
+   }

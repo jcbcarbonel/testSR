@@ -1,0 +1,91 @@
+#use rs232 (baud=19200, xmit=PIN_C6, rcv=PIN_C7, stream=GSM)
+
+//!#int_ext1
+//!
+//!void ext_isr1(void)
+//!{
+//!   EXT_FLAG=1;
+//!   strcpy(SMS_RCV,RXD_DATA);
+//!}
+//!
+
+#int_rda
+void rda_isr(void)
+{
+   InterruptGSM_Flag = 1;
+   RXD_DATA[InterruptGSM_Counter++]=fgetc(GSM);
+}
+
+void clear_InterruptGSM()
+{
+   int i=0;
+   
+   for (i=0;i<BUFFER_SIZE;i++)
+   {
+      RXD_DATA[i]=NULL;
+      GSM_RESPONSE[i]=NULL;
+   }
+   
+   InterruptGSM_Counter=0;
+   READ_CNTR=0;
+   InterruptGSM_Flag=0;
+}
+
+//!void clear_InterruptGSM()
+//!{  
+//!   InterruptGSM_Rxd[0]='\0';
+//!   InterruptGSM_Flag=0;
+//!   InterruptGSM_Counter=0;
+//!}
+//!
+char *GetResponse(void)
+{
+   int tempCntr = 0;
+   int i=0, len=0;
+   
+   len = strlen(DESIRED_RESPONSE);
+   while(((InterruptGSM_Counter - READ_CNTR) < len) && ++tempCntr < 30) delay_ms(100);
+
+   len = READ_CNTR;
+   if(tempCntr < 30)
+   {
+      tempCntr = 0;
+      do
+      {
+         do
+         {                                                                                      
+            for(; (READ_CNTR != InterruptGSM_Counter) && (RXD_DATA[READ_CNTR] != DESIRED_RESPONSE[0]); READ_CNTR=(READ_CNTR+1) % BUFFER_SIZE);
+            for(i = 0; (READ_CNTR != InterruptGSM_Counter) && (RXD_DATA[READ_CNTR] == DESIRED_RESPONSE[i]) && (DESIRED_RESPONSE[i] != 0); i++, READ_CNTR=(READ_CNTR+1) % BUFFER_SIZE);
+            if(DESIRED_RESPONSE[i] == 0)
+            {
+               // TODO: insert delay if necessary
+               RXD_DATA[InterruptGSM_Counter] = 0; // terminate string
+               len = (InterruptGSM_Counter - READ_CNTR);
+               for(i = 0; i <= len; i++)
+               {
+                  GSM_RESPONSE[i] = RXD_DATA[READ_CNTR + i];
+                  //fprintf(PC,"%c",GSM_RESPONSE[i]);
+               }
+               READ_CNTR = InterruptGSM_Counter;
+               return &GSM_RESPONSE[0];
+               
+            }
+         } while((DESIRED_RESPONSE[i] != 0) && (READ_CNTR != InterruptGSM_Counter));
+         delay_ms(100);
+         READ_CNTR = len;
+      } while(++tempCntr < 10);
+   }
+
+   READ_CNTR = InterruptGSM_Counter;
+
+//    TODO: for debugging purposes, to be removed
+//   fprintf(PC, "\r\nMessage Received:");
+//   for(; len != InterruptGSM_Counter; len++)
+//   {
+//      fprintf(PC, "%c", RXD_DATA[len]);
+//   }
+//   fprintf(PC, "READ_CNTR=%i\n", read_cntr);
+//   fprintf(PC, "InterruptGSM_Counter=%i\n", write_cntr);
+   return NULL; // no match found
+ }
+

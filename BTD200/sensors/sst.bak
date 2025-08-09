@@ -1,0 +1,50 @@
+#use rs232(baud=9600, xmit=PIN_G4, rcv=PIN_G3, stream=SST)//sea surface
+
+void getSSTData()
+{
+   int16 cnz=0;
+   int ii=0;
+   int xx=0;
+   char data_[100]={};
+   char x;
+   strcpy(data_,"err");
+   while(1)
+   {
+choy:
+      cnz=0;
+      ii=0;
+      fprintf(PC,"enter command\n");
+      getDataFromPC();
+      delay_ms(10);
+      fprintf(PC, "from PC=%s\n",FROMSERIALPC);
+      if (strcmp(FROMSERIALPC,"EXIT")==0)
+         return;
+      clear_buffer();
+      fprintf(EXO, "%s\r", FROMSERIALPC);
+      //fprintf(EXO, "Para\r");
+      do
+      {
+         data_[ii++] = fgetc(EXO);
+         if (data_[ii-1] == '\r')
+            break;
+         
+/*         
+         while(!kbhit(EXO))
+         {
+            cnz++;
+            if (cnz >= 60000)
+            {
+               fprintf(PC,"err\n");
+               goto choy;
+            }               
+            
+         }
+*/        
+       }while (ii < 100);
+       fprintf(PC,"response from sensor=");
+       for(xx=0;xx<ii;xx++)
+         fprintf(PC, "%c",data_[xx]);
+      fprintf(PC,"\n");         
+   }
+}
+

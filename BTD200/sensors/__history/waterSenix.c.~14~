@@ -1,0 +1,259 @@
+
+void sortWaterData()
+{
+   int i=0, j=0;
+   float temp=0;
+   
+   for (i=0; i<=(sampleCounter-2); i++)
+   {
+      for (j=0;j<=((sampleCounter-2)-i);j++)
+      {  
+         if(temp2Distance[j]>temp2Distance[j+1])  
+         {  
+            temp=temp2Distance[j];  
+            temp2Distance[j]=temp2Distance[j+1];  
+            temp2Distance[j+1]=temp;  
+         }  
+      }
+   }
+/*   
+   for ( i = 0 ; i <= (sampleCounter-1) ; i++ )
+   {
+      fprintf (PC, "after: %2.2f=%d\r", temp2Distance[i],i ) ;
+      fprintf (PC "------------------\r") ;
+   }
+*/
+}
+
+float computeDistanceX()
+{
+   int i=0;
+   int mid =0;
+
+   float median;
+   float filter_low;
+   float filter_high;
+   float valx=0;
+
+   mid = sampleCounter / 2;
+   median = temp2Distance[mid];
+   if (sampleCounter % 2 == 0)
+      median = (temp2Distance[mid] + temp2Distance[mid-1])/2;
+   else
+      median = temp2Distance[mid];
+      
+   filter_low = median - 10;
+   filter_high = median + 10;
+      
+   /*
+   printf ( "filter_low =%2.2f\r", filter_low) ;
+   printf ( "median =%2.2f\r", median) ;
+   printf ( "filter_high =%2.2f\r", filter_high) ;
+   */
+   for ( i = 0 ; i <= (sampleCounter-1) ; i++ )
+   {
+      if ((temp2Distance[i] >= filter_low) && (temp2Distance[i] <= filter_high))
+      {
+         if (valx == 0)
+            valx = temp2Distance[i];
+         else
+            valx = (valx + temp2Distance[i]) / 2;
+         //fprintf(PC,"vvv = %2.2f, valx = %2.2f\r",temp2Distance[i],valx);
+      }
+   }
+   //fprintf(PC,"VALX = %2.2f\r",valx);
+   return valx;
+}
+
+void getDistance()
+{  
+   long timeOut=0;
+    char hexDistance[3];
+    float tempDistance=0;
+    
+    sampleCounter = 0;
+    int i=0;
+   
+    //enableBOOST1();
+    ledConfig(LED_GREEN);
+    delay_ms(1000);
+    //disable_interrupts(INT_EXT2);
+    //disable_interrupts(GLOBAL);
+   
+    while(sampleCounter!=20)
+      {fprintf(SNSR_WATER, "%c%c%c%c%c%c%c%c",0x01,0x03,0x02,0x08,0x00,0x07,0x84,0x72);
+       while(!kbhit(SNSR_WATER)&&++timeOut<50000)
+         {delay_us(10);}
+       timeOut=0;
+       if(kbhit(SNSR_WATER))
+         {if(fgetc(SNSR_WATER)==0x01)
+            {if(fgetc(SNSR_WATER)==0x03)//0x03
+               {if(fgetc(SNSR_WATER)==0x0E)//0x0E
+                  {hexDistance[0]=fgetc(SNSR_WATER);
+                   hexDistance[1]=fgetc(SNSR_WATER);
+                   hexDistance[2]=0x00;
+                   //fprintf(PC,"\nhexDistance: %s",hexDistance);
+                   tempDistance=make16(hexDistance[0],hexDistance[1])*0.003384*4;
+                   //fprintf(PC,"\ndistance: %f", tempDistance);
+                   if (tempDistance!=0)
+                     temp2Distance[sampleCounter++] = tempDistance; 
+                   }
+                else
+                  {tempDistance=0;
+                   fprintf(PC,"ATTENTION: Communication Error 1!\n");
+                  }
+               }
+             else
+               {tempDistance=0;
+                fprintf(PC,"ATTENTION: Communication Error 2!\n");
+               }
+            }
+          else
+            {tempDistance=0;
+             fprintf(PC,"ATTENTION: Communication Error 3!\n");
+            }
+         }
+     
+       else
+         {fprintf(PC,"ATTENTION: No Sensor Response!\n");
+          tempDistance=0;
+         }
+        
+       if(tempDistance==0) 
+         {i++;}
+      if (i==30)
+      {
+         strcpy(funcReturnVar,"ERR");
+         return;
+      }
+       delay_ms(200);
+      }//end while
+     
+    
+    ledConfig(LED_OFF);
+    sortWaterData();
+    tempDistance = computeDistanceX();
+    //fprintf(PC,"\nsampleCounter: %i, distance: %fm",sampleCounter,tempDistance);
+    tempDistance= tempDistance * 0.0254;
+    //fprintf(PC,"\nsampleCounter: %i, distance: %fm",sampleCounter,tempDistance);
+    //enable_interrupts(INT_EXT2);
+    //enable_interrupts(GLOBAL);
+    //fprintf(PC,"\nd: %f",tempDistance*0.0254);
+    sprintf(funcReturnVar, "%2.2f", tempDistance);
+    //disableBOOST1();
+   }
+
+
+void getRadarData()
+{
+   char *statcat=NULL;
+   
+   delay_ms(5000);
+   restart_wdt();
+   sdi12A_DUAL_return("0M!", 1);
+   sdi12A_DUAL_return("0D0!", 0);
+   strcpy(TOKEN,"+");
+   statcat = strtok(funcReturnVar,TOKEN);
+   statcat = strtok(0,TOKEN);
+   strcpy(funcReturnVar,statcat);
+   fprintf(PC,"Radar reading: %s\n",funcReturnVar);
+}
+   
+
+/*
+void getSample()
+   {char *ptr;
+    char data[60];
+    char delimiter[3];
+    char serverNumber[15];
+    char distance[10];
+    char extEepromMsg[60];
+    int32 i;
+    int tempCounter=0;
+    float tempF=0;
+    char rain[5];
+    char health[50];
+  
+    ptr=getServerNumber();
+    strcpy(serverNumber,ptr);
+  
+    ptr=getSystemHealthStatus();
+    strcpy(health,ptr);
+  
+    itoa(rainCount,10,rain);
+    fprintf(PC,"\nRain Count: %s",rain);
+   
+    tempF=sensorHeight-distanceGlobal;
+    sprintf(distance, "%2.2f", tempF);
+    fprintf(PC,"\nWater Level Height: %s",distance);
+    rainCount=0;
+   
+    strcpy(delimiter,">");
+    strcpy(data,rain);
+    strcat(data,delimiter);
+    strcat(data,distance);
+    strcat(data,delimiter);
+    strcat(data,health);
+    strcpy(delimiter,"+");
+    strcat(data,delimiter);
+   
+    fprintf(PC,"\n\ndata: ");
+    powerExtEeprom(1);
+    for (i=0;i<=strlen(data)-1;i++)
+      {if(addressCount==EXT_EEPROM_SIZE)
+         {addressCount=0;}
+      
+       if (lastSentAddress==addressCount) //error handler if lastSentAddress==addressCount
+         {while(readExtEeprom(lastSentAddress)!='+')
+            {lastSentAddress++;}
+          writeExtEeprom(lastSentAddress, '^');
+         }
+          
+       writeExtEeprom(addressCount, data[i]);
+       //fprintf(PC,"%c",readExtEeprom(addressCount));
+       addressCount++;
+      }
+    writeExtEeprom(addressCount, '*');
+   
+    i=lastSentAddress;
+    lastSentAddress++;
+    while(lastSentAddress!=addressCount)
+      {if(lastSentAddress==EXT_EEPROM_SIZE)
+         {lastSentAddress=0;}
+           
+       extEepromMsg[tempCounter]=readExtEeprom(lastSentAddress);
+       if (extEepromMsg[tempCounter]=='+')
+         {extEepromMsg[tempCounter+1]=NULL;
+          fprintf(PC, "\n%s",extEepromMsg);
+          if(sendSMS(extEepromMsg,serverNumber))
+            {writeExtEeprom(lastSentAddress, '^');
+             writeExtEeprom(i,'!');
+             i=lastSentAddress;               
+             restart_wdt();
+            }
+           else
+            {break;}
+          tempCounter=0;
+         }
+        
+       else
+         {tempCounter++;}
+      
+       lastSentAddress++;
+      
+       if (tempCounter==60)
+         {tempCounter=0;}
+      }
+    lastSentAddress=i; 
+   
+    //fprintf(PC, "\nCurrent Address: %lu",addressCount);
+    //fprintf(PC, "\nSent Address: %lu",lastSentAddress);
+    powerExtEeprom(0);
+   }
+
+
+*/
+
+
+
+

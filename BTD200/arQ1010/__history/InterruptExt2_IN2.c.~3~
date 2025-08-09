@@ -1,0 +1,12 @@
+int1 InterruptExt2_Input2 = 0;
+
+#int_ext2
+void ext_isr2(void)
+{//if (input(PIN_B0))
+   {
+     InterruptFlag=1;  
+    // fprintf(PC, "Interrupt!\n");
+   }
+}
+
+

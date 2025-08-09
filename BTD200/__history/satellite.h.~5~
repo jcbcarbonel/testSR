@@ -1,0 +1,13 @@
+#use rs232(baud=9600, xmit=PIN_G1, rcv=PIN_G2, stream=PC)
+int SATELLITE_FLAG=0;
+
+void satelliteCommand();
+void satEchoOff();
+void getCSQ();
+void satIniforSend();
+void satWriteData();
+int satSendData();
+int satProcess();
+int satelliteSend();
+void SatelliteManualCommands();
+

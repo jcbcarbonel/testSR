@@ -1,0 +1,209 @@
+
+
+
+int8 scp_startup(unsigned int8 operation_mode){
+
+   unsigned int8 i,data_in=0;
+    
+   //output_high(SCP_CSB);
+   delay_ms(60);
+
+   for(i = 6; i > 0; i--){
+      data_in = scp_read(SCP_STATUS);
+      if((data_in & 0x01)==0)
+         break;
+      delay_ms(10);
+   }
+
+   if(i == 0){
+      #ifdef debug
+      printf("Error on status register, LSB not 0.");
+      #endif
+
+      return 1; // 1 return error of status
+   }
+
+   data_in = scp_read(SCP_DATARD8);
+
+   if((data_in & 0x01) == 0){
+      #ifdef debug
+      printf("EEPROM checksum error.\n");
+      #endif
+      return 2; // 2 return error on EEPROM checksum
+   }
+
+   #ifdef debug
+   printf("Start-up complete.\n");
+   #endif
+
+   //scp1000_write_indirect(0x2D,0x03); // Low noise configuration
+   //delay_ms(100);
+
+   scp_write(SCP_OPERATION,0x00); //reset operation mode
+   delay_ms(10);
+   scp_write(SCP_OPERATION,operation_mode); // set SCP1000 triggered mode
+   delay_ms(100);
+}
+
+/**
+   Read and 8 bit register
+
+   @return unsigned int8 containing the register data
+*/
+
+unsigned int8 scp_read(unsigned int8 address){
+
+   unsigned int8 value;
+
+   address = (address << 2);
+   //output_low(SCP_CSB);
+   spi_write(address);
+   value = spi_read(0x00); 
+   //output_high(SCP_CSB);
+   return value;
+}
+
+/**
+   Read and 16 bit register
+
+   @return unsigned int16 containing the register data
+*/
+
+unsigned int16 scp_read16(unsigned int8 address){
+
+   unsigned int8 l,h;
+
+   address = (address << 2);
+   //output_low(SCP_CSB);
+   spi_write(address);
+   h = spi_read(0x00);
+   l = spi_read(0x00);
+   //output_high(SCP_CSB);
+
+   return make16(h,l);
+}
+
+/**
+   Read an 8 bit indirect register
+
+   @return unsigned int16 containing the register data
+*/
+
+unsigned int16 scp_read_indirect(unsigned int8 address){
+
+   scp_write_indirect(SCP_ADDPTR,address);
+   scp_write_indirect(SCP_OPERATION,0x01);
+   delay_ms(10);
+   return scp_read16(SCP_DATARD16);
+}
+
+/*
+   Write unsigned int8 data into the address register
+*/
+
+void scp_write(unsigned int8 address, unsigned int8 data){
+
+   address = (address << 2);
+   address |= 0x02;
+   //output_low(SCP_CSB);
+   spi_write(address);
+   spi_write(data);
+   //output_high(SCP_CSB);
+}
+
+/*
+   Write unsigned int8 data into the address indirect register
+*/
+
+void scp_write_indirect(unsigned int8 address, unsigned int8 data){
+
+   scp_write(SCP_ADDPTR,address);
+   scp_write(SCP_DATAWR,data);
+   scp_write(SCP_OPERATION,0x02); //0x02 is an "write indirect" command
+   delay_ms(50);
+}
+
+unsigned int32 scp_read_pressure(){
+
+   unsigned int8 press_msb;
+   unsigned int16 press_lsb;
+
+   scp_write(SCP_OPERATION,0x0C);
+   delay_ms(10);
+   press_msb = scp_read(SCP_DATARD8);
+   delay_ms(1);
+   press_lsb = scp_read16(SCP_DATARD16);
+   return make32(press_msb,press_lsb);
+}
+
+unsigned int16 scp_read_temperature(){
+
+   unsigned int16 temperature;
+
+   scp_write(SCP_OPERATION,0x0C);
+   delay_ms(10);
+   temperature = scp_read16(SCP_TEMPOUT);
+   //celsius = (float)scp1000_read16(TEMPOUT) *0.05;
+   temperature &= 0x3FFF;
+   return temperature;
+}
+
+float scp_read_temperatureF(){
+
+   unsigned int16 temperature;
+
+   float temp_float;
+   scp_write(SCP_OPERATION,0x0C);
+   delay_ms(10);
+   temperature = scp_read16(SCP_TEMPOUT);
+   //celsius = (float)scp1000_read16(TEMPOUT) *0.05;
+   temperature &= 0x3FFF;
+   temp_float = (float)temperature*0.05;
+   return temp_float;
+}
+
+float scp_read_pressureF()
+{
+
+   unsigned int8 press_msb;
+   unsigned int16 press_lsb;
+   unsigned int32 press;
+   float press_float;
+
+   scp_write(SCP_OPERATION,0x0C);
+   delay_ms(10);
+   press_msb = scp_read(SCP_DATARD8);
+   delay_ms(1);
+   press_lsb = scp_read16(SCP_DATARD16);
+   press =  make32(press_msb,press_lsb);
+   press_float = (float)press * 0.25;
+   return press_float;
+}
+
+void getPressureReadings()
+{
+   // stores temperature+pressure in funcReturnVar
+   
+   char charx='+';
+   char tempStorage[20]={};
+   float dataFloat=0;
+   
+   strcpy(funcReturnVar,"");
+   
+   output_low(SCP_CSB);
+   delay_ms(1000);
+   scp_startup(0x0C);
+   delay_ms(500);
+   
+   dataFloat=scp_read_temperatureF();
+   sprintf(tempStorage, "%2.2f", dataFloat); //temperature
+   strcpy(funcReturnVar,tempStorage);
+   strncat(funcReturnVar,&charx,1);
+   
+   dataFloat=scp_read_pressureF();
+   sprintf(tempStorage, "%2.2f", dataFloat); //pressure
+   strcat(funcReturnVar,tempStorage);
+   
+   output_high(SCP_CSB);
+}
+

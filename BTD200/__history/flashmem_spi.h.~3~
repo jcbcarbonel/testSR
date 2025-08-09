@@ -1,0 +1,104 @@
+#define SPI_MODE_0  (SPI_L_TO_H | SPI_XMIT_L_TO_H)
+#define DTF_CS PIN_E0
+
+#define SCP_SCK PIN_C3
+#define SCP_MOSI PIN_C5
+#define SCP_MISO PIN_C4
+#define SCP_CSB PIN_F1
+
+
+int16 unsentDTFPageCnt=0;
+int16 unsentDTFByteCnt=0;
+
+//----------------------------------------------------------------------------
+// Dataflash Config
+//
+//const int16 DTFBlockSize = 512;       // block Size
+const int16 DTFPageSize  = 512;       // Page Size
+const int16 DTFNbrPage   = 8191;      // No of Pages for 4 MB of data
+//---------------------------------------------------------------------------
+int1 DTFIsReady(void);
+//void DTFWriteToFlash(char *buff, int16 len,int1 buffer);
+
+#define DTFSelect()\
+        output_low(DTF_CS);\
+        delay_cycles(3)
+
+#define DTFUnSelect()\
+        output_high(DTF_CS);\
+        delay_cycles(3)               
+        
+
+int16 LastSentDataPage=0;
+int16 LastSentDataBlock=0;
+int16 EndDataPage=0;
+int16 EndDataBlock=0;
+
+//---------------------------------------------------------------------------
+// DataFlash PageCount
+//
+int16   DTFPageCnt=0;
+#byte   DTFPageCnt_L=DTFPageCnt
+#byte   DTFPageCnt_H=DTFPageCnt+1
+
+//--------------------------------------
+//Unsent Address
+int16   DTFunsentAddress=0;
+#byte   DTFunsentAddress_L=DTFunsentAddress
+#byte   DTFunsentAddress_H=DTFunsentAddress+1
+
+//---------------------------------------------------------------------------
+// DataFlash ByteCount
+//
+int16   DTFByteCnt = 0;
+#byte   DTFByteCnt_L=DTFByteCnt
+#byte   DTFByteCnt_H=DTFByteCnt+1
+
+//---------------------------------------------------------------------------
+// DataFlash Address
+//
+int16   DTFAddress=0;
+#byte   DTFAddress_L=DTFAddress
+#byte   DTFAddress_H=DTFAddress+1
+
+//---------------------------------------------------------------------------
+// DataFlash Dump PageCnt
+//
+int16   DTFDumpPageCnt;
+
+//---------------------------------------------------------------------------
+// DataFlash Full Flags
+//
+BOOLEAN DTFFull;
+
+//---------------------------------------------------------------------------
+// DataFlash Buffer Select for Double Buffering
+//
+BOOLEAN DTF_Buffer_2_Active;
+
+//---------------------------------------------------------------------------
+// DataFlash Driver State
+//
+BOOLEAN DTFDriverRun;
+
+void clearCounters();
+#separate
+int8 DTFReadStatus(void);
+#separate
+void DTFPageToRam(int16 PageNum, int1 buffer);
+#separate
+void DTFRAMToPage(int1 buffer,int1 PageAdd);
+#separate
+void DTFInitDump(int1 buffer,int16 pageToDump);
+#separate
+int DTFDumpNextPage(void);
+#separate
+void DTFOpen(void);
+#separate
+void DTFWriteToFlash(char *buff, int16 len,int1 buffer);
+int1 DTFIsReady(void);
+void ReadPage(int1 buffer, char *text, char *startx, char *endx);
+#separate
+void DTFReadFromPage(int16 PageNum,int1 buffer);
+void DTFfindMarkers(int1 buffer);
+void SetSizeFT(void);

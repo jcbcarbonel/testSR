@@ -1,0 +1,363 @@
+int1 checkPinStatus(int16 pin)
+{
+   if (input(pin) == 1)
+      return 0;
+   else
+      return 1;
+}
+
+//!void chargeFaultCheck()
+//!{
+//!   int1 chrgStat1 = 0;
+//!   int1 faultStat1 = 0;
+//!   int1 chrgStat2 = 0;
+//!   int1 faultStat2 = 0;
+//!   char strx[5] = {};
+//!   
+//!   chrgStat1 = checkPinStatus(pin_CHRG_STAT1);
+//!   faultStat1 = checkPinStatus(pin_FAULT_STAT1);
+//!   chrgStat2 = checkPinStatus(pin_CHRG_STAT2);
+//!   faultStat2 = checkPinStatus(pin_FAULT_STAT2);
+//!
+//!   sprintf(strx,"%i%i%i%i",chrgStat1,faultStat1,chrgStat2,faultStat2);
+//!   strcpy(funcReturnVar,strx);
+//!}
+
+void enableBattery1()
+{
+   output_low(ENBA);
+   output_high(ENBB);
+}
+
+void enableBattery2()
+{
+   output_high(ENBA);
+   output_low(ENBB);
+}
+
+void disableBatteryControl()
+{
+   output_high(ENBA);
+   output_high(ENBB);
+}
+
+void enableBOOST2()
+{
+   output_high(pin_BOOST2);
+}
+
+void enableBOOST1()
+{
+   output_high(pin_BOOST1);
+}
+
+void disableBOOST2()
+{
+   output_low(pin_BOOST2);
+}
+
+void disableBOOST1()
+{
+   output_low(pin_BOOST1);
+}
+
+void getBoardCurrent()
+{
+   float inputVoltage =0;
+   float current =0;
+   
+   inputVoltage = getADCVoltage(channel_VBAT_ADC);
+   inputVoltage = inputVoltage * 0.0803;
+   //fprintf(PC,"inputVoltage=%2.6f\n",inputVoltage);
+   current = ((inputVoltage * 10 ) /(0.330 * 50)) ;
+   //fprintf(PC,"current=%2.5f\n",current);
+   sprintf(funcReturnVar,"%2.4f",current);
+}
+
+
+float getVoltage(int source)
+{
+   float _vboost_ =0;
+   
+   _vboost_ = getADCVoltage(source);
+   //fprintf(PC,"voltage1__=%2.3f\n",_vboost_);
+   _vboost_ = _vboost_ * BATT_VFACTOR;
+   sprintf(funcReturnVar,"%2.3f\n",_vboost_);
+   return _vboost_;
+}
+/*
+void getPBoardVoltage(int1 source)
+{
+   float _vboost_ =0;
+   float _iboost_ =0;
+   float _current_ =0;
+   float _vext_ = 0;
+   
+   if (source == 1)
+   {
+      _vboost_ = getADCVoltage(channel_VBOOST_ADC);
+      _iboost_ = getADCVoltage(channel_IBOOST_ADC);
+      _vext_ = getADCVoltage(channel_VEXT1_ADC);
+   }
+   else if (source == 2)
+   {
+      _vboost_ = getADCVoltage(channel_VBOOST2_ADC);
+      _iboost_ = getADCVoltage(channel_IBOOST2_ADC);
+      _vext_ = getADCVoltage(channel_VEXT2_ADC);
+   }
+   else if (source == 3)
+   {
+   
+   }
+   
+   //fprintf(PC,"_vboost_=%2.5f\n",_vboost_);
+   _vboost_ = _vboost_ * BATT_VFACTOR;
+   //fprintf(PC,"_vboost_source_1=%2.5f\n",_vboost_);
+   
+   //fprintf(PC,"_iboost_=%2.5f\n",_iboost_);
+   _iboost_ = _iboost_ * BATT_VFACTOR;
+   //fprintf(PC,"_iboost_source_1=%2.5f\n",_iboost_);
+   
+   //fprintf(PC,"_vext1_=%2.5f\n",_vext1_);
+   _vext_ = _vext_ * BATT_VFACTOR;
+   //fprintf(PC,"_vext1_source_2=%2.5f\n",_vext1_);
+   
+   _current_ = (_iboost_ - _vboost_) / .05;  // .05 is the value of the resistor
+   //fprintf(PC,"current=%2.5f\n",_current_);
+   fprintf(PC,"voltage=%2.5f\n",_vboost_);
+   //sprintf(funcReturnVar,"%2.3f+%2.3f",_vboost_,_current_);
+   sprintf(funcReturnVar,"%2.3f",_vboost_);
+}
+*/
+
+void powerSavingActive()
+{
+   if (POWERSAVING != ACTIVATE)
+   {
+      fprintf(PC,"POWER SAVING ACTIVATED\n");
+      strcpy(SMS_TOBE_SENT,"POWER SAVING ACTIVATED");
+      clear_buffer();
+      delay_ms(200);
+      SendSMS(SERVERNUMBER); 
+      delay_ms(1100);
+      POWERSAVING = ACTIVATE;
+      ShutDownGSM();
+      disableBOOST2();
+      disableBOOST1();
+   }
+}
+
+
+void selectPowerSource()
+{
+   int result = 0;
+   
+   result = compareSourceVoltages(0);
+   if (result == 3)    //power saving mode
+   {
+      powerSavingActive();
+      disableBatteryControl();
+   }
+//!   else if (result == 2)
+//!   {
+//!       enableBattery2();
+//!   }
+//!   else if (result == 1)
+//!   {
+//!      enableBattery1();
+//!   }
+   else if (result == 4)
+      disableBatteryControl();
+   
+}
+
+void getBatteryVoltages(float & primary, float & secondary)
+{
+   primary = getADCVoltage(channel_INA_ADC) * BATT_VFACTOR;
+   secondary = getADCVoltage(channel_INB_ADC) * BATT_VFACTOR;
+}
+
+
+int compareSourceVoltages(int1 displayDirect)
+{
+   float primary =0;
+   float secondary =0;
+   float source = 0;
+   
+   getBatteryVoltages(primary, secondary);
+   if (displayDirect==1)
+   {
+      fprintf(PC,"primary=%2.6f,secondary=%2.6f\n",primary, secondary);
+      return 0;
+   }
+   
+//!   #ifdef GETEXTERNALVOLTAGE  
+//!      source = getVoltage(channel_VEXT2_ADC); // external voltage
+//!      //source = batExt_adc(7);
+//!   #endif
+   
+   if (displayDirect==1)
+   {
+      fprintf(PC,"lead acid = %2.6f\n",source);
+      return 0;
+   } 
+   
+//!   if (POWERSAVING == ACTIVATE)
+//!   {
+//!      if ((primary >= 3.8) || (secondary >= 3.8))
+//!      {
+//!         InitGSM();
+//!         delay_ms(1000);
+//!         fprintf(PC,"POWER SAVING DEACTIVATED");
+//!         strcpy(SMS_TOBE_SENT,"POWER SAVING DEACTIVATED\n");
+//!         SendSMS(SERVERNUMBER); 
+//!         POWERSAVING = DEACTIVATE;
+//!         powerBoostConfig(0);
+//!      }
+//!      else
+//!         return 0;
+//!   }
+   //fprintf(PC,"primary=%2.6f\n",primary);
+   //fprintf(PC,"secondary=%2.6f\n",secondary);
+   
+   if (POWERSAVING == ACTIVATE)
+   {
+      if (source >= 11.90)
+      {
+         InitGSM();
+         delay_ms(1000);
+         fprintf(PC,"POWER SAVING DEACTIVATED");
+         strcpy(SMS_TOBE_SENT,"POWER SAVING DEACTIVATED\n");
+         SendSMS(SERVERNUMBER);
+         POWERSAVING = DEACTIVATE;
+         powerBoostConfig(0);
+      }
+      else
+         return 0;
+   }
+   
+//!      if (source <= 11.80){
+//!         return 3;}
+//!   else if ((primary <= 3.4) && (secondary > primary))
+//!      return 2;
+//!   else if (primary > secondary)
+//!      return 1;
+   else
+      return 4;
+}
+
+
+float getADCVoltage(int channel)
+{
+   int x=0;
+   int32 adcValue=0;
+   int32 adcValueAve=0;
+   float voltage=0;
+   
+   delay_ms(20);
+   set_adc_channel(channel);
+   delay_ms(20);
+   adcValueAve=read_adc();
+   adcValueAve=0;
+   delay_ms(10);
+   for (x=0;x<16;x++)
+   {
+      adcValueAve=read_adc();
+      fprintf(PC,"adcValueAve=%ld\n",adcValueAve);
+      adcValue+=adcValueAve;
+      //adcValueAve = (adcValueAve + adcValue) / 2;
+      delay_ms(10);
+   }
+   adcValue/=16;
+   //fprintf(PC,"ADC=%ld\n",adcValue);
+//!   voltage = ((adcValue * 3.31) / 4096.0);
+   voltage = ((adcValue) * (3.31 / 4096.0));
+   if (voltage > 5)
+      voltage = 0;
+   //fprintf(PC,"voltage1__=%2.6f\n",voltage);
+   return voltage;   
+}
+
+
+float batExt_adc(int channelx)
+{
+   int x =0;
+   float adcValue=0;
+   
+   float vref = 3.285;
+   float vfactor=7.866;
+   float vext=0;
+   
+   set_adc_channel(channelx);
+   
+   for(x=0;x<3;x++)
+   {
+      adcValue = read_adc();
+      delay_ms(1000);
+   }
+   fprintf(PC,"batExt=%2.2f\n",adcValue);
+   vext = (vref * adcValue * vfactor) / 4096; 
+   return vext;
+}
+
+
+#ifdef LEADACID
+float batExt_adc(int channelx)
+{
+   int x =0;
+   float adcValue=0;
+   
+   float vref = 3.291;
+   float vfactor=7.866;
+   float vext=0;
+   
+   set_adc_channel(channelx);
+   
+   for(x=0;x<3;x++)
+   {
+      adcValue = read_adc();
+      delay_ms(1000);
+   }
+   //fprintf(PC,"batExt=%2.2f\n",adcValue);
+   vext = (vref * adcValue * vfactor) / 4096; 
+   return vext;
+}
+#endif
+
+float batAdc()
+{
+   float adcValue=0;
+   int x;
+   
+   set_adc_channel(0);
+   for(x=0;x<5;x++)
+   {
+      adcValue = read_adc();
+      delay_ms(500);
+   }
+   adcValue = ((adcValue * 3.285) / 4096.0) * 1.995;
+   fprintf(PC,"batAdc=%2.2f\n",adcValue);
+   return adcValue;
+}
+
+void batPath()
+{
+/*
+   float adcValue=0;
+   char battery[8]={};
+   char batSource[3]={};
+   
+   
+   if (!input(POWER_STAT))
+      strcpy(batSource,"P");
+   else
+      strcpy(batSource,"S");
+      
+   adcValue = batAdc();
+   sprintf(battery,"%2.1f",adcValue);
+   strcat(battery,batSource);   
+   strcpy(funcReturnVar,battery);
+*/  
+}
+
+

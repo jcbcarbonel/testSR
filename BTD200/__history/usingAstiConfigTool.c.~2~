@@ -1,0 +1,191 @@
+
+
+void getIniString()
+{
+   char strength[5]={};
+   char batext[10]={};
+   char temp[5]={};
+   char hum[5]={};
+   char dateTime[20]={};
+   float restemp=0; 
+   float truehumid=0;
+   char fullstrStatus[70] = {};
+
+
+   INTSERIAL_FLAG = 0;
+   //-----strength-------------
+   getStrength();
+   strcpy(strength,funcReturnVar);
+
+   //---------battery external------------------
+   batPath();
+   strcpy(batext,funcReturnVar);
+   
+   //----- temperature and humidity-----
+   sht_rd (restemp, truehumid); 
+   sprintf(temp,"%3.1f",restemp);
+   sprintf(hum,"%3.1f",truehumid);
+   
+   //------ getDateTime ------
+   GetDateTime();
+   strcpy(dateTime,funcReturnVar);
+
+   strcpy(TOKEN, "+");
+   
+   strcpy(fullstrStatus,FIRMWARE);
+   strcat(fullstrStatus,TOKEN);
+   strcat(fullstrStatus,strength);
+   strcat(fullstrStatus,TOKEN);
+   strcat(fullstrStatus,batext);
+   strcat(fullstrStatus,TOKEN);
+   strcat(fullstrStatus,temp);
+   strcat(fullstrStatus,TOKEN);
+   strcat(fullstrStatus,hum);
+   strcat(fullstrStatus,TOKEN);
+   strcat(fullstrStatus,dateTime);
+   strcat(fullstrStatus,TOKEN);
+   strncat(fullstrStatus,&SENSORTYPE,1);
+   delay_ms(20);
+   strcpy(funcReturnVar,fullstrStatus);
+}
+
+void rainGaugeTestPSTC()
+{
+   GetRainCount_TIPPING();
+   fprintf(PC,"*+%s\n",funcReturnVar);
+   RAINCOUNT_TIPPING=0;
+}
+
+void setConfigs()
+{
+   char varx[13] = {};
+   char passx[13] = {};
+   char strStream[40]={};
+   char *ptrx1 = NULL;
+   char *ptrx2 = NULL;
+   char *ptrx3 = NULL;
+   char *ptrx4 = NULL;
+   char *ptrx5 = NULL;
+   
+   
+   readDataEEprom(5);
+   strcpy(passx,funcReturnVar);
+   fprintf(PC,"*+%c+%i+%s+%s+%i\n",SENSORTYPE,SENDING_TIME,passx,SERVERNUMBER,BATTERYUSED);
+   fgets(funcReturnVar);
+   strcpy(TOKEN,"+");
+   if(funcReturnVar[0] == '}')
+   {
+      ptrx1 = strtok(funcReturnVar, TOKEN);
+      ptrx1 = strtok(0, TOKEN);//password
+      ptrx2 = strtok(0, TOKEN);//sensor
+      ptrx3 = strtok(0, TOKEN);//serverNum
+      ptrx4 = strtok(0, TOKEN);//sendingTime
+      ptrx5 = strtok(0, TOKEN);//batteryUsed
+      
+      strcpy(passx,ptrx1);
+      AddDataEEprom(passx,5);
+      fprintf(PC,"password=%s\n",passx);
+      
+      strcpy(varx,ptrx2);
+      sprintf(strStream,"SENSORTYPE %s %s",passx,varx);
+      gsmInquire(strStream,1);
+      
+      strcpy(varx,ptrx3);
+      sprintf(strStream,"SERVERNUMBER %s %s",passx,varx);
+      gsmInquire(strStream,1);
+      
+      strcpy(varx,ptrx4);
+      sprintf(strStream,"SENDINGTIME %s %s",passx,varx);
+      gsmInquire(strStream,1);
+      
+      strcpy(varx,ptrx5);
+      sprintf(strStream,"BATTERYUSED %s %s",passx,varx);
+      gsmInquire(strStream,1);
+      
+      fprintf(PC,"*+%c+%i+%s+%s+%i\n",SENSORTYPE,SENDING_TIME,passx,SERVERNUMBER,BATTERYUSED);
+      
+   }
+}
+
+void astiConfigToolInterface()
+{
+   int procResult=0;
+   
+   setup_wdt(WDT_OFF);
+   getIniString();
+   fprintf(PC,"*+%s",funcReturnVar);
+   while(1) 
+   {
+      getDataFromPC();
+      //getHexFromDebug();
+      switch(FROMSERIALPC[0])
+      {
+         case DATETIME: //date time
+         {
+            fprintf(PC,"%c",DATETIME);  // for date and time SEt
+            downloadDateTime();
+            
+            break;
+         }
+         case SENSORINI: // sensor test initialize
+         {
+            RAINCOUNT_TIPPING=0;
+            fprintf(PC,"%c",SENSORTEST);  // for PSTC rain gauge test
+            break;
+         }
+         case SENSORTEST: //sensorpoll
+         {
+            //if ((SENSORTYPE == 'R') || (SENSORTYPE == 'P'))
+            //   rainGaugeTestPSTC();
+            //else
+               sensorPoll();
+            break;
+         }
+         case CONFIGSET: //config settings
+         {
+            setConfigs();
+            break;
+         }
+         case FIRMWAREMODE: //firmware ini
+         {
+            fprintf(PC,"%c",FIRMWAREMODE);
+            delay_ms(2000);
+            downloadFirmware();
+            break;
+         }
+         case GSMTEST:
+         {
+            fprintf(PC,"%c",GSMTEST);
+            fgets(FROMSERIALPC,PC);
+            fgetsRemover(FROMSERIALPC);
+            sensorPoll();
+            strcpy(SMS_TOBE_SENT, REALDATA);
+            SendSMS(FROMSERIALPC);
+            fprintf(PC,"[[[");
+            break;
+         }
+         
+         case REDOWNLOADFIRMWARE:  //redownload firmware
+         {
+            writeCharEE('X',EEPROM_BOOTLOAD_FLAG);
+            delay_ms(100);
+            reset_cpu();
+            break;
+         }
+         case SATELLITE_TEST:  //satellite test
+         {
+            fprintf(PC,"%c",SATELLITE_TEST);
+            procResult = satelliteSend();
+            fprintf(PC,"~+%i",procResult);
+            break;
+         }
+         default:
+         {
+            clearRainCumVars();
+            fprintf(PC,"%c",EXITCONFIG);
+            setup_wdt(WDT_ON);
+            return;
+         }
+      }
+   }
+}

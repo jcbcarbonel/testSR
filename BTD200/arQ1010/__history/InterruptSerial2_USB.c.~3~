@@ -1,0 +1,8 @@
+#use rs232(baud=57600, xmit=PIN_G1, rcv=PIN_G2, stream=PC)
+
+#int_rda2
+void rda2_isr(void)
+{
+   INTSERIAL2_FLAG = 1;
+   RXD2_DATA[WRITE2_CNTR++]=fgetc(PC);
+}

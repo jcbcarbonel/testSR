@@ -1,0 +1,23 @@
+//---------- 331 IS ALLOCATED FOR SENSOR TYPE
+//---------- 345 IS ALLOCATED FOR BOOTLOAD FLAG
+//---------- 346 IS ALLOCATED FOR BATTERY USED      
+//---------- 351 IS DEPLOYMENT STATUS
+
+
+//---------- 305 IS ALLOCATED FOR SENSOR TYPE
+//---------- 306 IS ALLOCATED FOR BOOTLOAD FLAG
+//---------- 307 IS ALLOCATED FOR BATTERY USED      
+//---------- 308 IS DEPLOYMENT STATUS
+
+
+
+void DelEepromPhoneNum();
+void DelOneNum(char *num1);
+void listPhNum(int hbp);
+void newEEData(char *eedata, unsigned int16 hbp);
+void AddDataEEprom(char *data,int hbp);
+void readCharEE(unsigned int16 hbp, char & outChar);
+void writeCharEE(char hbp, unsigned int16 addx);
+void ReadEE(unsigned int16 basti,unsigned int16 hbp);
+int1 checkEEpromStatus (unsigned int16 bry);
+void readDataEEprom(int hbp);

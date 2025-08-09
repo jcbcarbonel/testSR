@@ -1,0 +1,203 @@
+
+void counterNewYear()
+{
+   char *ptr=NULL;
+   
+   if (MIN == 0 && HOUR == 0 && DAYS == 31 && MONTH == 12)
+   {
+      YEAR_PREV = YEAR - 2000;
+      fprintf(PC, "YEAR_PREV=%i\n",YEAR_PREV);
+   }
+   
+   if (MIN == 0 && HOUR == 0 && DAYS == 1 && MONTH == 1)
+   {
+      strcpy(DESIRED_RESPONSE, "+CCLK: ");
+      delay_ms(100);
+      YEAR_PREV++;
+      itoa(YEAR_PREV,10,FROMSERIALPC);
+      strcat(FROMSERIALPC,"/01/01,00:00:03");
+      fprintf(PC, "from COUNTERNEWYEAR =%s\n",FROMSERIALPC);
+      clear_buffer();
+      fprintf(SERIAL_INT, "AT+CCLK=\"%s\"\r",FROMSERIALPC);
+      strcpy(FROMSERIALPC,"");
+      if (GetResponse())
+         fprintf(PC,"clock set\n");
+      delay_ms(200);
+      clear_buffer();
+      do {
+         fprintf(SERIAL_INT,"AT+CCLK?\r");
+         delay_ms(200);
+         ptr = GetResponse();
+      }while(!ptr);
+   }
+}
+
+
+
+
+void convertDateParam(int _param_)
+{
+   if (_param_ < 10)
+      sprintf(SMALLvar,"0%i",_param_);
+   else
+      sprintf(SMALLvar,"%i",_param_);
+ }
+
+void GetDateTime() 
+// create a string composed of date and time in the format YY/MM/DD,HH:MM:SS
+// store it in funcReturnVar variable 
+{
+   char forTime[5]={};
+   char strDateTime[20] ={};
+   char charx = NULL;
+   
+   charx='/';
+   
+   convertDateParam(YEAR);
+   strcpy(strDateTime,forTime);
+   
+   itoa(YEAR,10,forTime);
+   strcpy(
+   addPadding(forTime);
+   
+   strncat(strDateTime,&charx,1);
+   
+   itoa(MONTH,10,forTime);
+   addPadding(forTime);
+   strcpy(strDateTime,forTime);
+   strncat(strDateTime,&charx,1);
+   
+   itoa(DAYS,10,forTime);
+   addPadding(forTime);
+   strcpy(strDateTime,forTime);
+   strncat(strDateTime,&charx,1);
+   
+   charx=',';
+   
+   itoa(HOUR,10,forTime);
+   addPadding(forTime);
+   strcpy(strDateTime,forTime);
+   strncat(strDateTime,&charx,1);
+   
+   charx=':';
+   
+   itoa(MIN,10,forTime);
+   addPadding(forTime);
+   strcpy(strDateTime,forTime);
+   strncat(strDateTime,&charx,1);
+         
+   itoa(SEC,10,forTime);
+   addPadding(forTime);
+   strcpy(strDateTime,forTime);
+
+   strcpy(funcReturnVar,strDateTime);
+   fprintf(PC,"datetime=%s\n",funcReturnVar);
+}
+
+
+/*
+void GetDateTime()
+{
+   
+   int ii=0;
+   int xx=0;
+   char forTime[5]={};
+   char strDateTime[20] ={};
+   
+   strcpy(funcReturnVar,"");
+   for (xx=0;xx<=5;xx++) 
+   {
+      switch(xx) {
+         case 0:
+            itoa(YEAR,10,forTime);
+            break;
+         case 1:
+            itoa(MONTH,10,forTime);
+            break;
+         case 2:
+            itoa(DAYS,10,forTime);
+            break;
+         case 3:
+            itoa(HOUR,10,forTime);
+            break;
+         case 4:
+            itoa(MIN,10,forTime);
+            break;
+         case 5:
+            itoa(SEC,10,forTime);
+            break;
+      }
+      if (strlen(forTime)==4) {
+         strDateTime[ii++] = forTime[2];
+         strDateTime[ii++] = forTime[3];
+         strDateTime[ii++] = ':';
+         }
+      else if (strlen(forTime)<2) {
+         strDateTime[ii++] = '0';
+         strDateTime[ii++] = forTime[0];
+         strDateTime[ii++] = ':';
+         }
+      else if (strlen(forTime)==2)  {
+         strDateTime[ii++] = forTime[0];
+         strDateTime[ii++] = forTime[1];
+         strDateTime[ii++] = ':';
+         }
+      else {
+         strDateTime[ii++] = '0';
+         strDateTime[ii++] = '0';
+         strDateTime[ii++] = ':';
+         }
+   }
+   ii--;
+   strDateTime[ii] = '\0';
+  
+   strcpy(funcReturnVar,strDateTime);
+   fprintf(PC,"datetime=%s\n",funcReturnVar);
+}
+*/
+
+
+void InsertTimeToVariables(char *ptx)
+{
+   char *dataz=NULL;
+   char temp1[20]={};
+   char tempx[3]={};
+   
+   strcpy(TOKEN,"/,:\"");       //yy/mm/dd,hh:mm:ss
+   strcpy(temp1,ptx);
+   delay_ms(150);
+   dataz = strtok(temp1,TOKEN);
+   strcpy(tempx,dataz);
+   YEAR = atoi(tempx);
+   //YEAR = YEAR + 2000;
+   
+   dataz = strtok(0,TOKEN);
+   strcpy(tempx,dataz);
+   MONTH = atoi(tempx);
+   
+   dataz = strtok(0,TOKEN);
+   strcpy(tempx,dataz);
+   DAYS = atoi(tempx);
+   
+   dataz = strtok(0,TOKEN);
+   strcpy(tempx,dataz);
+   HOUR = atoi(tempx);
+   
+   dataz = strtok(0,TOKEN);
+   strcpy(tempx,dataz);
+   MIN = atoi(tempx);
+   
+   dataz = strtok(0,TOKEN);
+   strcpy(tempx,dataz);
+   SEC = atoi(tempx);
+}
+
+void downloadDateTime()
+{
+   getDataFromPC();
+   SetTime(FROMSERIALPC);
+   fprintf(PC,"%s",funcReturnVar);
+   InsertTimeToVariables(funcReturnVar);
+}
+
+

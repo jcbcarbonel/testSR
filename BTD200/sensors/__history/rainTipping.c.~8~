@@ -1,0 +1,122 @@
+
+
+#int_ext //PORT B2
+void ext_isr(void)
+{
+   if (input(RAIN_TIPPING))
+   {
+      RAINCOUNT_TIPPING++;   
+   }
+}
+
+
+void rainReset_TIPPING()
+{
+   RAINCOUNT_TIPPING=0;
+   RAINCUM_TIPPING=0;
+}
+
+void GetRainCount_TIPPING()
+{
+   char strRainCount[5]={};
+   
+   itoa(RAINCOUNT_TIPPING,10,strRainCount);
+   strcpy(funcReturnVar,strRainCount);
+}
+
+void RainCum_TIPPING_func()
+{
+   char strRainCount[5]={};
+   
+   RAINCUM_TIPPING = RAINCUM_TIPPING + RAINCOUNT_TIPPING;
+   RAINCOUNT_TIPPING = 0;
+   itoa(RAINCUM_TIPPING,10,strRainCount);
+   strcpy(funcReturnVar,strRainCount);
+}
+
+void getRainFullwithPressure()
+{
+   char charx='+';
+   float ftempPressSensor=0;
+   float fpressure=0;
+   char tempStorage[10]={};
+   
+   GetRainCount_TIPPING();
+   strcpy(REALDATA,funcReturnVar);
+   strncat(REALDATA,&charx,1);
+   RainCum_TIPPING_func();
+   strcpy(REALDATA,funcReturnVar);
+   strncat(REALDATA,&charx,1);
+   getPressureReadings(ftempPressSensor, fpressure);
+   
+}
+
+void addPressureModuleToREALDATA()
+{
+   char charx='+';
+   float ftempPressSensor=0;
+   float fpressure=0;
+   char tempStorage[10]={};
+   
+   getPressureReadings(ftempPressSensor, fpressure);
+   sprintf(tempStorage, "%2.2f", ftempPressSensor); //temperature
+   strcat(REALDATA,tempStorage);
+   strncat(REALDATA,&charx,1);
+   sprintf(tempStorage, "%2.2f", fpressure);  //pressure
+   strcat(REALDATA,tempStorage);
+   strncat(REALDATA,&charx,1);
+}
+
+
+//-----------------------------------------------------------
+/*
+int1 RainPressSms()
+{
+   float ftempPressSensor=0;
+   float fpressure =0;
+   char tempPress[10]={};
+   char pressure[10]={};
+   
+   int ii=0;
+   char tempxx[50] = {};
+   
+   
+   ii = GetRainCount_Davies();
+   getPressureReadings();
+   sprintf(tempPress, "%2.2f", ftempPressSensor);
+   sprintf(pressure, "%2.2f", fpressure);
+   
+   REALDATA[ii-1] = '\n';
+   REALDATA[ii] = '\0';
+   strcpy(tempxx,"RC=");
+   strcat(tempxx,REALDATA);
+   strcpy(REALDATA,tempxx);
+   strcat(REALDATA,"T=");
+   strcat(REALDATA,tempPress);
+   strcat(REALDATA,"\nP=");
+   strcat(REALDATA,pressure);
+   ii=strlen(REALDATA);
+   REALDATA[ii++]='\n';
+   REALDATA[ii++] = '\0';
+   dateAdd(ii);
+   fprintf(PC,"\n%s\n",REALDATA);
+   return 1;
+}
+
+int1 RainSms()
+{
+   int ii=0;
+   char tempxx[50] = {};
+   
+   ii = getRainCount();
+   REALDATA[ii-1] = '\n';
+   REALDATA[ii++] = '\0';
+   dateAdd(ii);
+   strcpy(tempxx,"RainCount=");
+   strcat(tempxx,REALDATA);
+   strcpy(REALDATA,tempxx);
+   fprintf(PC,"\n%s\n",REALDATA);
+   return 1;
+}
+*/
+

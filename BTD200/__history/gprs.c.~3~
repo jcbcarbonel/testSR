@@ -1,0 +1,915 @@
+
+
+int1 checkGPRSData(char *strx)
+{
+   int8  checksum,i,atoix,msgSize=0;
+   char strTemp[70]={};
+   
+   strcpy(strTemp,strx);
+   msgSize = strlen(strTemp);
+   msgSize++;
+   checksum = 0;  // Sum the bytes to find the check sum value
+   if (strTemp[0] == ':')
+   {
+      for (i=1; i<(msgSize-3); i+=2)
+      {
+         
+         checksum += atoi_b16 (&strTemp[i]);
+      }
+      checksum = 0xFF - checksum + 1;
+      atoix = atoi_b16 (&strTemp[msgSize-3]);
+      if (checksum != atoi_b16 (&strTemp[msgSize-3]))
+         return 1;
+      else
+         return 0;
+   }
+   else
+      return 0;
+}
+
+/*
+
+void rcvMsgGPRSftp()
+{
+   int1 checkRes=0;
+   char *temp=NULL;
+   char *temp1=NULL;
+   int dataLength=0;
+   char strk[9] = {};
+   int1 endFTP = 0;
+   int choy=0;
+   while(endFTP == 0)
+   {   
+      clear_buffer();
+      strcpy(TOKEN, "\n\r");
+      strcpy(DESIRED_RESPONSE, "^SISR: 1,");
+      fprintf(SERIAL_INT,"at^sisr=1,229\r");
+      delay_ms(150);
+      temp = GetResponse();
+      if (temp)
+      {
+         temp1 = strtok(temp, TOKEN);
+         fprintf(PC,"dataLength: %s\n",temp1);
+         dataLength = atoi(temp1);
+         fprintf(PC,"dataLength: %i\n",dataLength);
+         endFTP = 1;
+/*
+      
+      if (choy++ >= 500)
+         endFTP = 1;
+*/         
+/*      
+      
+      dataLength = atoi(temp);
+      fprintf(PC,"dataLength: %i\n",dataLength);
+      if (temp)
+      {
+         temp1 = strtok(temp, TOKEN); // lenght of the message
+         
+         if (dataLength != 229)
+            endFTP = 1;
+         strcpy(MSG_STAT,temp1);
+         temp1 = strtok(0, TOKEN); // message 
+         strcpy(MSG_DATA,temp1);
+         fprintf(PC,"MSG_DATA: %s\n",MSG_DATA);
+         delay_ms(400);
+            
+      
+         
+/*      
+      //fprintf(PC,"gprsMsg=%s\n",RXD_DATA);
+      
+      
+         
+         
+      }      
+      
+   }
+}
+
+*/
+
+void sampCopy()
+{
+   int16 x=0;
+   strcpy(MSG_DATA,"thequickbrownfoxjumpsoverthelazy");
+   for (x=0;x<=400;x++)
+   {  
+      //DTFWriteToFlash(MSG_DATA,strlen(MSG_DATA),0);
+      //delay_ms(100);
+      //fprintf(PC,"data: %s\n",MSG_DATA);
+      DTFRAMToPage(0,1);
+      fprintf(PC,"x: %li\n",x);
+   }
+}
+
+/*
+void rcvMsgGPRSftp()
+{
+   int exitCnt=0;
+   int dataCount=0;
+   int1 dataStart=0;
+   int1 forConnect=0;
+   int cntx=0;
+   int1 checkRes=0;
+   char *temp=NULL;
+   char *temp1=NULL;
+   int dataLength=0;
+   char strk[9] = {};
+   int1 endFTP = 0;
+   
+   clearCounters(); //clear page and byte counters
+   while(endFTP == 0)
+   {   
+      clear_buffer();
+      strcpy(TOKEN, "\n\r");
+      strcpy(DESIRED_RESPONSE, "^SISR: 0, ");
+      fprintf(SERIAL_INT,"at^sisr=0,229\r");
+      delay_ms(350);
+      //fprintf(PC,"gprsMsg=%s\n",RXD_DATA);
+      temp = GetResponse();
+      fprintf(PC,"getResponse=%s\n",temp);
+      temp1 = strtok(temp, TOKEN);
+      strcpy(strk,temp1);
+      dataLength = atoi(strk);
+      cntx =0;
+      if ((unsigned)dataLength >= 250)
+      {
+         if (exitCnt >= 10)
+         {
+            fprintf(PC,"GPRS_RCV_BADDATA=%li\n",GPRS_RCV_BADDATA);
+            fprintf(PC,"LASTdata: %s \n",MSG_DATA1);
+            endFTP = 1;
+            DTFRAMToPage(0,1);
+            return;
+         }
+         else
+         {
+            delay_ms(1000);
+            exitCnt++;
+         }   
+      }
+      
+      while (temp1!=0 || cntx < 7)
+      {
+         temp1 = strtok(0,TOKEN);
+         dataCount = strlen(temp1);
+         
+         if (dataCount > 0)
+         {
+            if ((strcmp(temp1,"OK")!=0) && (*temp1!=0x01))
+            {
+               strcpy(MSG_DATA,temp1);
+               fprintf(PC,"origData: %s  :  %i\n",MSG_DATA,strlen(MSG_DATA));
+               if (MSG_DATA[0]!=':' && MSG_DATA[0]!=';')
+               {
+                  forConnect=1;                                    
+                  strcat(MSG_DATA1,MSG_DATA);
+               }                  
+               if (dataStart == 0)
+                  dataStart = 1;
+               else
+               {
+                  fprintf(PC,"data: %s  :  %i\n",MSG_DATA1,strlen(MSG_DATA1));
+                  if (MSG_DATA1[0]!=';')
+                  {
+                     checkRes = checkGPRSData(MSG_DATA1);
+                     GPRS_RCV_BADDATA = GPRS_RCV_BADDATA + checkRes;
+                  }                     
+                  DTFWriteToFlash(MSG_DATA1,strlen(MSG_DATA1),0);
+                  delay_ms(400);
+                  if (forConnect==1)
+                  {
+                     forConnect=0;
+                     dataStart=0;
+                  }
+               }
+               strcpy(MSG_DATA1,MSG_DATA);
+            }               
+         }
+         else
+            break;
+         cntx++;
+      }
+      fprintf(PC,"exit\n");
+      //delay_ms(430);
+//      if (choy++ >= 500)
+//         endFTP = 1;
+//      fprintf(PC,"gprsMsg=%s\n",RXD_DATA);
+      
+/*         
+      temp = GetResponse();
+      temp1 = strtok(temp, TOKEN);
+      fprintf(PC,"dataLength: %s\n",temp1);
+      dataLength = atoi(temp1);
+      fprintf(PC,"dataLength: %i\n",dataLength);
+      endFTP = 1;
+
+      
+      if (choy++ >= 500)
+         endFTP = 1;
+*/         
+/*      
+      
+      dataLength = atoi(temp);
+      fprintf(PC,"dataLength: %i\n",dataLength);
+      if (temp)
+      {
+         temp1 = strtok(temp, TOKEN); // lenght of the message
+         
+         if (dataLength != 229)
+            endFTP = 1;
+         strcpy(MSG_STAT,temp1);
+         temp1 = strtok(0, TOKEN); // message 
+         strcpy(MSG_DATA,temp1);
+         fprintf(PC,"MSG_DATA: %s\n",MSG_DATA);
+         delay_ms(400);
+            
+      
+         
+/*      
+      //fprintf(PC,"gprsMsg=%s\n",RXD_DATA);
+      
+      
+         
+         
+      }      
+    
+   }
+}
+*/
+
+
+int checkBulkData(int1 insertx)
+{
+   char msg_data_[50]={};
+   int1 checkRes=0;
+   int1 validStream=0;
+   char *temp1 = NULL;
+   int cntx = 0;
+   int dataCount=0;
+   //int strxlen=0;
+  // char tokx[10] = {};
+   
+   //strcpy(tokx,"OK");
+   if (insertx == 0)
+   {
+      fprintf(PC,"REALDATA=%s\n",REALDATA);
+      temp1 = strtok(REALDATA,TOKEN);
+      
+   }      
+   else
+   {
+      fprintf(PC,"funcReturnVar=%s\n",funcReturnVar);
+      temp1 = strtok(funcReturnVar,TOKEN);
+      
+   }      
+   //strxlen = strlen(temp1);
+   //fprintf(PC,"strxlen=%i\n",strxlen);
+   GPRS_RCV_BADDATA = 0;
+   validStream =0;
+   if (temp1 == 0)
+      return 1;
+   while(temp1 != 0 || cntx < 12)
+   {
+      delay_ms(20);
+      cntx++;
+      temp1 = strtok(0,TOKEN);
+      dataCount = strlen(temp1);
+      fprintf(PC,"temp1=%s\n",temp1);
+      if (dataCount > 0)
+      {
+         if (strcmp(temp1,",")==0)
+            continue;
+         if ((*temp1==';') || (*temp1==':'))
+         {
+            validStream= 1;
+            strcpy(msg_data_,temp1);
+            if (insertx == 0)
+            {
+               if (msg_data_[0]!=';')
+               {
+                  checkRes = checkGPRSData(msg_data_);
+                  GPRS_RCV_BADDATA = GPRS_RCV_BADDATA + checkRes;
+               }
+            }
+            else
+            {
+               strcpy(GPRS_LASTDATA_STORED,msg_data_);
+               DTFWriteToFlash(msg_data_,strlen(msg_data_),0);
+               if (msg_data_[0]==';')
+               {
+                  DTFRAMToPage(0,1);
+                  GPRS_FIRMWARE_STATUS = 0;
+                  return 3;
+               }                  
+            }               
+         }
+      }
+   }
+   if (validStream ==1)
+   {
+      if (GPRS_RCV_BADDATA > 0)
+         return 1;
+      else
+         return 0;
+   }
+   else
+      return 1;
+}
+
+int1 rcvMsgGPRS(int1 modex)
+{
+   int exitLimit=0;
+   int dataLength=0;
+   int cntx=0;
+   int1 endFTP = 0;
+//   int exitCnt=0;
+
+   int checkRes=0;
+   char *temp=NULL;
+   char *temp1=NULL;
+   char strz[4] = {};
+   char strk[9] = {};
+   
+   if (modex == 0)   
+   {
+      strcpy(REALDATA,"ready");
+      clearCounters(); //clear page and byte counters
+   }
+   else
+   {
+      strcpy(REALDATA,"$$$+");
+      strcat(REALDATA,GPRS_LASTDATA_STORED);
+   }
+   sendGPRS(strlen(REALDATA),REALDATA);
+   GPRS_FIRMWARE_STATUS = 1;
+   while(endFTP == 0)
+   {  
+      restart_wdt();
+      if (EXT_FLAG==1)
+      {        
+         EXT_FLAG=0;
+         delay_ms(500);
+         temp = NULL;
+         temp1 = NULL;
+         strcpy(TOKEN, "\n\rOK\n\r");
+         strcpy(DESIRED_RESPONSE, "^SISR: 0, ");
+         clear_buffer();
+         fprintf(SERIAL_INT,"at^sisr=0,229\r");
+         delay_ms(500);
+         fprintf(PC,"gprsMsg=%s\n",RXD_DATA);
+         temp = GetResponse();
+         strcpy(REALDATA,temp);
+         strcpy(funcReturnVar,temp);
+         temp1 = strtok(temp, TOKEN);
+         strcpy(strk,temp1);
+         dataLength = atoi(strk);
+         cntx =0;
+   /*      
+         if ((unsigned)dataLength > 1)
+         {
+            if (exitCnt >= 10)
+            {
+               fprintf(PC,"GPRS_RCV_BADDATA=%i\n",GPRS_RCV_BADDATA);
+               fprintf(PC,"LASTdata: %s \n",MSG_DATA1);
+               endFTP = 1;
+               DTFRAMToPage(0,1);
+               return;
+            }
+            else
+            {
+               delay_ms(1000);
+               exitCnt++;
+            }   
+         }
+   */      
+         if ((unsigned)dataLength > 0)
+         {
+            exitLimit=0;
+            checkRes = checkBulkData(0);
+            fprintf(PC,"checkRes=%i\n",checkRes);
+            if (checkRes==0)
+            {
+               checkRes = checkBulkData(1);
+               if (checkRes == 3)
+               {
+                  closeCon();
+                  writeCharEE(FIRMWAREFLASHDOWNLOAD,EEPROM_BOOTLOAD_FLAG);
+                  reset_cpu();
+                  return 0;
+               }
+               strcpy(strz,"^^");
+               sendGPRS(strlen(strz),strz);
+            }
+            else if (checkRes == 1) 
+            {
+               strcpy(strz,"xx");
+               sendGPRS(strlen(strz),strz);
+            }
+         }
+      }
+      else
+      {
+         
+         exitLimit++;
+         delay_ms(1000);
+         if (exitLimit > 50)
+         {
+            closeCon();
+            return 1;
+         }            
+      }
+   }   
+}
+
+
+/*
+int rcvMsgGPRS()
+{
+   int1 checkRes=0;
+   char *temp=NULL;
+   char *temp1=NULL;
+   char strz[4] = {};
+   char strk[9] = {};
+   
+   clear_buffer();
+   strcpy(TOKEN, "\n\r");
+   strcpy(DESIRED_RESPONSE, "^SISR: 0,");
+   fprintf(SERIAL_INT,"at^sisr=0,229\r");
+   //delay_ms(300);
+   //fprintf(PC,"gprsMsg=%s\n",RXD_DATA);
+   strcpy(strk,"finished");
+   temp = GetResponse();
+   if (temp)
+   {
+      temp1 = strtok(temp, TOKEN); // lenght of the message
+      strcpy(MSG_STAT,temp1);
+      temp1 = strtok(0, TOKEN); // message 
+      strcpy(MSG_DATA,temp1);
+      gprsRCVcnt++;
+      fprintf(PC,"cnt:%lu\n",gprsRCVcnt);
+      checkRes = checkGPRSData(MSG_DATA);
+      if (checkRes == 0)
+         strcpy(strz,"xx");
+      else
+         strcpy(strz,"^^");
+      sendGPRS(strlen(strz),strz);
+      if (checkRes==1)
+         DTFWriteToFlash(MSG_DATA,strlen(MSG_DATA),0);
+      if (!stricmp(MSG_DATA,strk)) 
+      {
+         exitLoopx = 1;
+         DTFRAMToPage(0,1);
+      }
+      return 1;
+   }
+   else
+      // fprintf(PC,"invalid data\n");
+      return 0;
+   
+}
+*/
+
+//int1 sendGPRs(int xxx,char *datazx) // temporary
+//{
+//   fprintf(PC,"data = %s\n", datazx);
+//   return 1;
+//}
+
+int1 sendGPRS(int xxx,char *datazx) //
+{
+
+int counter=0;
+int1 status=FALSE;
+int1 statx=FALSE;
+int loopCount=0;
+int loopCount1=0;
+char msg2send[150]={};
+
+strcpy(msg2send,datazx);
+fprintf(PC, "msg2send=%s\n",msg2send);
+
+chox:
+   strcpy(DESIRED_RESPONSE, "^SISW: 0");
+   clear_buffer();
+   fprintf(SERIAL_INT, "at^sisw=0,%i\r",xxx);
+   delay_ms(10);
+   do {
+      delay_ms(100);
+      if (INTSERIAL_FLAG)
+      {
+         if (GetResponse())
+         {
+            status=TRUE;
+            break;
+         }
+         else
+            INTSERIAL_FLAG=0;
+      }
+   }while(++counter < 15);
+   if (status==FALSE)
+   {
+      fprintf(PC, "no response\n");
+      if (++loopCount<3)
+         goto chox;
+   }
+   else
+   {
+      status=FALSE;
+      counter=0;
+      clear_buffer();
+      //delay_ms(200);
+      fprintf(SERIAL_INT, "%s", msg2send);
+      strcpy(DESIRED_RESPONSE, "OK");
+      //delay_ms(200);
+      fputc(26,SERIAL_INT); // ctrl-z to
+      do {
+         delay_ms(100);
+         if (INTSERIAL_FLAG)
+         {
+            if (GetResponse())
+            {
+               statx=TRUE;
+               break;
+            }
+            else
+               INTSERIAL_FLAG=0;
+         }
+      } while(++counter < 13);
+      if (statx==TRUE)
+      {
+         fprintf(PC,"msg sent\n");
+         status=TRUE;
+      }
+      else
+      {
+         loopCount=0;
+         if (++loopCount1<4)
+            goto chox;
+         status=FALSE;
+         fprintf(PC,"not sent\n");
+      }
+   }
+   INTSERIAL_FLAG=0;
+return status;
+}
+
+
+int1 closeCon()
+{
+
+int cntx=0;
+int1 statx = FALSE;
+strcpy(DESIRED_RESPONSE, "OK");
+//if (hbp==1)
+//{
+   //delay_ms(100);
+   //strcpy(texxp,"TCLOSE+TCLOSE@");
+   //sendGPRs(strlen(texxp),texxp);
+//}
+//if (!check_tcp())
+//      goto upAlready;
+clear_buffer();
+delay_ms(500);
+fprintf(SERIAL_INT, "at^sisc=0\r");
+do{
+   delay_ms(70);
+   if (INTSERIAL_FLAG)
+   {
+      if (GetResponse())
+      {
+         statx=TRUE;
+         break;
+      }
+      else
+         INTSERIAL_FLAG=0;
+   }
+} while(++cntx < 10);
+if (statx == TRUE)
+{
+   //gprs_bool=0;
+   fprintf(PC,"Con Closed\n");
+   return 1;
+}
+else
+{
+   fprintf(PC,"Con NOT Closed\n");
+   return 0;
+}
+}
+
+int1 check_tcp()
+{
+
+char *msg_x=NULL;
+char *msg_act=NULL;
+char arrxx[15]={};
+
+strcpy(DESIRED_RESPONSE, "^SISI: 0");
+strcpy(TOKEN,",");
+delay_ms(200);
+fprintf(SERIAL_INT,"at^sisi=0\r");
+msg_x = GetResponse();
+msg_act = strtok(msg_x,TOKEN);
+strcpy(arrxx,msg_act);
+fprintf(PC,"gprs status:%c\n",arrxx[0]);
+if (arrxx[0]=='4')
+   return 1;
+else
+  return 0;
+}
+
+
+
+void InitICP(int1 hbp)
+{
+   int1 status=FALSE;
+   int for3exit = 0;
+   int countx=0;
+   int cntxx = 0;
+
+retInit:
+   for3exit++;
+   cntxx = 0;
+   strcpy(DESIRED_RESPONSE, "OK");
+   fprintf(PC,"Initialize GPRS.\n");
+   clear_buffer();
+   delay_ms(500);
+   fprintf(SERIAL_INT, "at^sisc=0\r");
+   if(GetResponse())
+      fprintf(PC,"starting...\n");
+   
+   // sets the connection type: GPRS
+   clear_buffer();
+   delay_ms(500);
+   fprintf(SERIAL_INT, "at^sics=0, conType, GPRS0\r");
+   status=FALSE;
+   countx = 0;
+   do{
+      delay_ms(100);
+      if (INTSERIAL_FLAG)
+      {
+         if (GetResponse())
+         {
+            status=TRUE;
+            break;
+         }
+         else
+            INTSERIAL_FLAG=0;
+      }
+   }while(countx++ < 15);
+   if (status==TRUE)
+   {
+      cntxx++;
+      fprintf(PC,"ConSet->GPRS\n");
+   }
+
+
+   // inactivity timeout set to 5 minutes
+   clear_buffer();
+   delay_ms(500);
+   fprintf(SERIAL_INT, "at^sics=0, inactTO, 300\r");
+   if(GetResponse())
+   {
+      fprintf(PC,"TimeOut=5min\n");
+      cntxx++;
+   }
+
+   clear_buffer();
+   delay_ms(500);
+   if (OPTINDICATOR==0)
+      fprintf(SERIAL_INT, "at^sics=0, apn, \"internet\"\r"); // if module is using a smart sim
+   else if (OPTINDICATOR==1)
+      fprintf(SERIAL_INT, "at^sics=0, apn, \"internet.globe.com.ph\"\r"); // if module is using a globe sim
+   if(GetResponse())
+   {
+      fprintf(PC,"APN set\n");
+      cntxx++;
+   }
+   strcpy(DESIRED_RESPONSE, "OK");
+   // sets alphabet **************
+   countx = 0;
+   clear_buffer();
+   delay_ms(200);
+   fprintf(SERIAL_INT, "at^siss=0, alphabet, 1\r");
+   status=FALSE;
+   do{
+      delay_ms(150);
+      if (INTSERIAL_FLAG)
+      {
+         if (GetResponse())
+         {
+            status=TRUE;
+            break;
+         }
+         else
+            INTSERIAL_FLAG=0;
+      }
+   }while(countx++ < 10);
+   if (status==TRUE)
+   {
+      fprintf(PC,"ascii alphabet\n");
+      cntxx++;
+   }
+   
+   clear_buffer();
+   delay_ms(200);
+   fprintf(SERIAL_INT, "at^siss=0, srvType, socket\r");
+   //fprintf(SERIAL_INT, "at^siss=0, srvType, ftp\r");
+   if (GetResponse())
+   {
+     // fprintf(PC,"ftp used.\n");
+      fprintf(PC,"socket used.\n");
+      cntxx++;
+   }
+   if (cntxx!=3)
+      if (for3exit <= 1)
+         goto retInit;
+}
+
+//void openConGprs(int1 hbp)
+//{
+//   gprs_bool=true;
+//}
+
+int checkGPRSstatus()
+{
+   char *temp1=NULL;
+   int statCnt=0;
+   
+   clear_buffer();
+   delay_ms(100);
+   strcpy(DESIRED_RESPONSE, "^SISI: 0,");
+   fprintf(SERIAL_INT, "at^sisi=0\r");
+   temp1 = GetResponse();
+   if (temp1!=0)
+   {
+      strcpy(TOKEN,",");
+      temp1 = strtok(temp1, TOKEN);
+      statCnt = atoi(temp1);
+      fprintf(PC,"statCnt=%i\n",statCnt);
+      return statCnt;
+   }
+   else
+   {      
+      fprintf(PC,"nothing\n");
+      return 0;
+   } 
+}
+
+int1 openConGprs()
+{
+   int countx=0;
+   int choyxcount=0;
+   
+   
+   //InitICP(0);
+   
+   //readDataEEprom(6);
+   //strcpy(arrx,funcReturnVar); // get server ip
+   fprintf(PC,"srvr ip=%s\n",SERVERIP);
+//   if (check_tcp())
+//      goto upAlready;
+choyx:  
+   restart_wdt();
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_buffer();
+   delay_ms(200);
+   fprintf(SERIAL_INT, "at^sisc=0\r");
+   if(GetResponse())
+      fprintf(PC,"connection closed...\n");
+   
+   clear_buffer();
+   delay_ms(200);
+   
+   fprintf(SERIAL_INT,"at^siss=0,address,\"socktcp://%s:5550\"\r",SERVERIP);
+   //fprintf(SERIAL_INT,"at^siss=0,address,\"socktcp://202.90.128.12:5550\"\r");
+   //fprintf(SERIAL_INT,"at^siss=0,address,\"ftp://lufftFTP:lufft4DATA@%s:21/sampBoot/ARQ_MAIN_wbootload.hex\"\r",arrx);
+   //8fprintf(SERIAL_INT,"at^siss=0,address,\"ftp://lufftFTP:lufft4DATA@%s:21/sampBoot/ARQ_MAIN_wbootload.hex\"\r",arrx);
+   //fprintf(GSM,"at^siss=1,address,\"socktcp://%s:8891\"\r",arrx);
+   countx = 0;
+   while(countx++ <5)
+   {
+      delay_ms(150);
+      if (INTSERIAL_FLAG)
+      {
+         fprintf(PC,"in here\n");
+         if (GetResponse())
+         {
+            INTSERIAL_FLAG=0;
+            break;
+         }
+      }
+   }
+   if(countx < 5)
+      fprintf(PC,"opening con\n");
+   else
+      fprintf(PC,"err con\n");
+   clear_buffer();
+   delay_ms(200);
+   fprintf(SERIAL_INT, "at^siss=0, conId, 0\r");
+   if(GetResponse())
+      fprintf(PC,"conId 0.\n");
+   
+   clear_buffer();
+   delay_ms(200);
+   fprintf(SERIAL_INT, "at^siso=0\r");
+   countx = 0;
+   while(countx++ <8)
+   {
+      delay_ms(250);
+      if (INTSERIAL_FLAG)
+      {
+         if (GetResponse())
+         {
+            INTSERIAL_FLAG=0;
+            break;
+         }
+      }
+   }
+   if(countx < 8)
+      fprintf(PC,"opened\n");
+   else
+      if (choyxcount++ < 3)
+         goto choyx;
+      else
+         return 0;
+    
+    
+   delay_ms(1000);
+   for(countx=0;countx<10;countx++)
+   {
+      if (checkGPRSstatus()==4)
+      {
+         fprintf(PC,"GPRS ok.\n");
+         return 1;
+      }
+      delay_ms(500);
+   }
+   return 0;
+}
+
+
+int1 PingTester()
+{
+   char texxp[20]={};
+   int pingVal = FALSE;
+   int gsnNameLen = 0;
+   int xx=0;
+   
+   gsnId();
+   delay_ms(200);
+   strcpy(MSG_DATA,funcReturnVar);
+   gsnNameLen = strlen(MSG_DATA);
+   if (gsnNameLen==0)
+      strcpy(MSG_DATA,"xx");
+   strcpy(texxp,"ping+");
+   strcat(texxp,MSG_DATA);
+   
+   for(xx=0;xx<=4;xx++)
+   {
+      pingVal = sendGPRS(strlen(texxp),texxp);
+      delay_ms(60);
+      if (pingVal==1)
+         break;
+   }
+   return pingVal;
+}
+
+/*
+void gprsRoutine()
+{
+   char strz[10] = {};
+   
+   openConGprs();
+   strcpy(REALDATA,"ready");
+   sendGPRS(strlen(REALDATA),REALDATA);
+   while(1)
+   {
+      if (EXT_FLAG==1)
+      {
+         restart_wdt();
+         //proc_receive();
+         rcvMsgGPRS(1024);
+         EXT_FLAG=0;
+      }
+      if (exitLoopx == 1)
+      {
+         exitLoopx = 0;
+         break;
+      }
+   }
+   writeCharEE('D',EEPROM_BOOTLOAD_FLAG);
+   strcpy(strz,"complete");
+   sendGPRS(strlen(strz),strz);
+   fprintf(PC,"%s\n",strz);
+   
+   //closeCon(0);
+}
+*/
+
+
+
+
+

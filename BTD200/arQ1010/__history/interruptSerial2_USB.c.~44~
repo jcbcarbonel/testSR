@@ -1,0 +1,27 @@
+#use rs232(baud=57600, xmit=TX_USB, rcv=RX_USB, stream=USB)
+
+#int_rda2 //RS232 receive data available in buffer 2
+
+void rda2_isr(void)
+{
+   InterruptUSB_Flag = 1;
+   InterruptUSB_Rxd[InterruptUSB_Counter++]=fgetc(USB);
+   InterruptUSB_Rxd[InterruptUSB_Counter]=0x00; //'\0' or 'NULL' teerminating character 
+}
+
+void clear_InterruptUSB()
+{  
+   //InterruptUSB_Rxd[0]='\0';
+   strcpy(InterruptUSB_Rxd,"");
+   InterruptUSB_Flag=0;
+   InterruptUSB_Counter=0;
+}
+
+
+void getDataFromUSB()
+{
+   clear_InterruptUSB();
+   while(!InterruptUSB_Flag);
+   delay_ms(50); //needed to stabilize USB input
+}
+

@@ -1,0 +1,21 @@
+#define RTC_I2C_ADDR_2129     81
+#define RTC_I2C_ADDR_8523     104
+#define RTC_CONTROL1_REG      0x00
+#define RTC_CONTROL2_REG      0x01
+#define RTC_CONTROL3_REG      0x02
+
+#define RTC_SEC_REG           0x03
+#define RTC_MIN_REG           0x04
+#define RTC_HOUR_REG          0x05
+#define RTC_DATE_REG          0x06
+#define RTC_WEEKDAY_REG       0x07
+#define RTC_MONTH_REG         0x08
+#define RTC_YEAR_REG          0x09
+
+int8 get_ack_status(int8 address);
+int32 rtcGetEpochDate(int32 year, int month, int day);
+int rtcAssignWeekday(int32 years, int months, int days);
+int8 rtcBCDToDec(int8 val);
+int8 rtcDecToBCD(int8 val);
+void rtcCreateTime(char *strx);
+

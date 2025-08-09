@@ -1,0 +1,9 @@
+#define RAIN_TIPPING  PIN_B0
+
+unsigned int16 RAINCUM_TIPPING=0;
+int RAINCOUNT_TIPPING=0;
+
+void rainReset_TIPPING()
+void getRainCount_TIPPING()
+void getRainCountCum_TIPPING()
+void getRainFullwithPressure()

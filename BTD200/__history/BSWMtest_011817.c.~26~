@@ -1,0 +1,609 @@
+/*    04/17/2015 -- tested power saving features
+                        - sleep mode if it reaches 3.4
+                        - using 38k and 2.2k as divider resistors, reading has 0.03v difference from actual
+                 -- arranged eeprom data holders
+                 -- incorporated power board config option
+                        - two digits that represents boost voltage of both power boards
+                           - first digit for power board one
+                           - second digit for power board two
+                        config:   
+                           - 0 (boost is turned off permanently)
+                           - 1 (boost is turned on permanently)
+                           - 2 (boost is turned on only during acquisition time)
+
+      04/21/2015 -- port_d_pullups for 18f87k22 uses a single control bit to pull_up all the pins. it cant control the pins individually
+                 -- 10k resistors on R11 and R16 should be placed
+                 -- without these pull-up resistors, the RTC chip will not function
+                 -- modified ReadEE() to terminate string by placing \0 at the end of the alloted length in case it cant find *
+                 -- change pin assignment of SCP_CSB since it is incorrect
+                 
+                 change ignitemodule, after 5 counts it will exit
+                 add senselope
+                 add exo for dost4a
+      05/28/2015 -- add satellite enable config
+                 -- add bswm sensor config
+                 -- add aboitiz sensor config
+                 -- change color LED to red when in power saving mode
+      07/29/2015 -- include default password
+                 -- edit senslope function to include ARQWAIT to extend waiting time for sensor acquisition
+                 -- edit handleUnsent functions to move checking of unsent data to buffer 2 so that data existing data from buffer 1 would not be disrupted
+                 -- edit the 'L' command of debug mode to change reading of pages from buffer 1 to buffer 2
+      08/08/2015 -- add radar sensor functionality
+                 -- sensor types RDR (radar) and RDRR (radar with rain and pressure)
+                 -- added interrupt checker to reset system if interrupts stop functioning
+                 -- ATE0 -> satellite command to turn echo off
+       08/18/2015 -- edit datetime option to use single function
+                 -- removed function to set datetime of gsm as it is not needed
+                 -- if using IDP only, second boostvoltage reading is replaced by external battery voltage
+                 -- if with gsm, every 12 MN, gsm module is restarted     
+       09/03/2015 -- added library for laser sensor
+       01/20/2017 -- SDIA is assigned for lufft and SDIB is assigned for the 2 soil sensors
+                  -- data format is changed: removed charge and fault status, 2 battery status (lipo), powerboard2 status
+                  -- added the monitoring of lead acid battery in replacement of PB2
+                 ----------------------------------
+check setting of date and time of rtc make sure it is military time
+*/
+
+#include <18F87K22.h>
+#device adc=12
+#device PASS_STRINGS = IN_RAM
+
+#FUSES WDT_SW, WDT32768, INTRC_IO, SOSC_HIGH, NOPROTECT, NOIESO, BROWNOUT, PUT, NOCPD, STVREN, NODEBUG, NOWRT, NOWRTD, NOEBTR, NOCPB, NOEBTRB, NOWRTC, NOWRTB, FCMEN, NOXINST, MCLR, RTCOSC_T1
+#use delay(clock=16000000)
+
+#use rs232(baud=57600, xmit=PIN_G1, rcv=PIN_G2, stream=PC)
+#use rs232(baud=19200, xmit=PIN_C6, rcv=PIN_C7, stream=SERIAL_INT)
+#use i2c(MASTER, sda=PIN_D5, scl=PIN_D6)
+//#include "bootloader.h"
+
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+
+
+#define INTERNAL_LED_STAT
+//#define GETBOOSTVOLTAGE
+#define GETEXTERNALVOLTAGE
+#case
+
+#define BUFFER_SIZE      255
+
+unsigned char const FIRMWARE[] = {"arQ.4.0"};
+
+char SENSORTYPE=NULL;
+char SERVERNUMBER[15]={};
+char SERVERIP[15]={};
+char funcReturnVar[BUFFER_SIZE]={}; 
+char FROMSERIALPC[25]={};
+char REALDATA[BUFFER_SIZE];
+char FUNCSMALLSTR[15]={};
+
+#include <sdi12B.h>
+#include <headers.c>
+#include <rtc.c>
+#include <pinDefinitions.c>
+#include <dualcolorLED.c>
+#include <eeprom_.c>
+#include <voltageDetails.c>
+#include <gsm.c>
+#include <generic.c>
+#include <interrupSerial.c>
+#include <interruptSerial2.c>
+#include <flashmem_spi.c>
+#include <dateTimeDetails.c>
+#include <satellite.c>
+#include <handleUnsent.c>
+#include <gprs.c>
+#include <debugMode.c>
+#include <powerSaving.c>
+#include <usingAstiConfigTool.c>
+#include <firmware2flash.c>
+#include <interruptTimer1.c>
+#include <sdi12A.c>
+#include <sdi12B.c>
+#include <sensors/shtTempHum.c>
+#include <sensors/vaisalaWXT520.c>
+#include <sensors/waterSenix.c>
+#include <sensors/pressure_scp.c>
+#include <sensors/rainTipping.c>
+#include <sensors/sunshineDuration.c>
+#include <sensors/rs485.c>
+#include <sensors/hmp155.c>
+#include <sensors/smp3_A.c>
+#include <sensors/ptb330.c>
+#include <sensors/maxbotix.c>
+#include <sensors/laser.c>
+#include <sensors/WL450.c>
+#include <sensors/senslope.c>
+#include <sensors/sonde.c>
+#include <sensors/lufft.c>
+#include <sensors/5TM.c>
+
+
+void dateTimeStatus()
+{
+   char strx[25]={};
+   char *ptr;
+   char year_[3]={};
+   char month_[3]={};
+   char day_[3]={};
+   char hour_[3]={};
+   char min_[3]={};
+   char sec_[3]={};
+   int cntx=0;
+
+   strcpy(TOKEN,"/,:");
+   
+   GetDateTime();
+   strcpy(strx,funcReturnVar);
+   ptr=strtok(strx,TOKEN);
+   strcpy(year_,ptr);
+   while(ptr!=0)
+   {
+      ptr = strtok(0,TOKEN);
+      cntx++;
+      if (cntx==1)
+         strcpy(month_,ptr);
+      if (cntx==2)
+         strcpy(day_,ptr); 
+      if (cntx==3)
+         strcpy(hour_,ptr);
+      if (cntx==4)
+         strcpy(min_,ptr);
+      if (cntx==5)
+         strcpy(sec_,ptr);
+   }
+   sprintf(funcReturnVar,"%s%s%s/%s%s%s",year_,month_,day_,hour_,min_,sec_);
+   //fprintf(PC,"date___=%s\n",funcReturnVar);
+}
+
+
+void addToRealDataAndseparator(int1 start)
+{
+   char charx='+';
+   
+   if (start == 1)
+      strcpy(REALDATA,funcReturnVar);
+   else
+      strcat(REALDATA,funcReturnVar);
+   strncat(REALDATA,&charx,1);
+}
+
+void sensorPoll()
+{
+   char charx='+';
+   char add;
+   int noplus=0;
+   
+   powerBoostConfig(1); // turns on boost based on configuration
+   ledConfig(LED_GREEN);
+   delay_ms(300);
+   
+//!   if(!stricmp(SENSORCONFIG,"WL")) // water level
+//!   {
+//!      getDistance();
+//!      strcpy(REALDATA,funcReturnVar);
+//!   }
+//!   else if (!stricmp(SENSORCONFIG,"RG")) // rain gauge
+//!   {
+//!      getRainFullwithPressure();
+//!      strcpy(REALDATA,funcReturnVar);
+//!   }
+//!   else if (!stricmp(SENSORCONFIG,"TM")) // tandem
+//!   {
+//!      getDistance();
+//!      addToRealDataAndseparator(1);
+//!      getRainFullwithPressure();
+//!      strcat(REALDATA,funcReturnVar);
+//!   }
+//!   else if (!stricmp(SENSORCONFIG, "SS")) // senslope
+//!   {
+//!      proc_SENSELOPE(1);
+//!      strcpy(REALDATA,"ARQ+");
+//!      getRainCountCum_TIPPING();
+//!      strcat(REALDATA,funcReturnVar);
+//!   }
+//!   else if (!stricmp(SENSORCONFIG, "EXO")) //4A
+//!   {
+//!      noplus=1;
+//!      getEXOData();
+//!      strcpy(REALDATA,funcReturnVar);
+//!   }
+   if (!stricmp(SENSORCONFIG, "BSWM"))
+   {
+//!      fprintf("Initializing LUFFT...\n");     //try this if the powerboard is set to 20
+//!      delay_ms(10000);
+//!      fprintf("Acquiring LUFFT data...\n");
+//!      delay_ms(3000);
+      getBSWM_lufftData();
+      //addToRealDataAndseparator(1);
+      strcpy(REALDATA,funcReturnVar);
+      getRainCountCum_TIPPING();
+      addToRealDataAndseparator(0);
+      GetSunshineCount();
+      addToRealDataAndseparator(0);
+      sunshineCum_func();
+      addToRealDataAndseparator(0);
+      add = '1';
+      getSoilmoistureData(add);
+      addToRealDataAndseparator(0);
+      add = '2';
+      getSoilmoistureData(add);
+      strcat(REALDATA,funcReturnVar);
+   }
+//!   else if (!stricmp(SENSORCONFIG,"LSR"))
+//!   {
+//!      getLaserStream();
+//!      strcpy(REALDATA,funcReturnVar);
+//!   }
+//!   else if (!stricmp(SENSORCONFIG, "ABTZ"))
+//!   {
+//!      getLufft2Streams();            // lufft data
+//!      addToRealDataAndseparator(1);
+//!      getRainCountCum_TIPPING();     //rain amount and cum  
+//!      strcat(REALDATA,funcReturnVar);
+//!   }
+//!   else if (!stricmp(SENSORCONFIG, "RDR"))
+//!   {
+//!      getRadarData();
+//!      strcpy(REALDATA,funcReturnVar);
+//!   }
+//!   else if (!stricmp(SENSORCONFIG, "RDRR"))
+//!   {
+//!      getRadarData();
+//!      strcpy(REALDATA,funcReturnVar);
+//!      addToRealDataAndseparator(1);
+//!      getRainFullwithPressure();
+//!      strcat(REALDATA,funcReturnVar);
+//!   }
+   else
+      strcpy(REALDATA,"no_sensor");
+   
+   if (noplus==0) 
+      strncat(REALDATA,&charx,1);
+      
+   logger_health_status();                 //pri_voltage+sec_voltage+boardcurrent+bcurrent+boost1voltage+boost2voltage+fault_chargestatus+gsmsignal+tempmod+hummod+flashpage
+   addToRealDataAndseparator(0);
+   dateTimeStatus();
+   strcat(REALDATA,funcReturnVar);
+   fprintf(PC,"%s\n",REALDATA);
+   powerBoostConfig(0); // turns off boost based on configuration
+   ledConfig(LED_OFF);
+   REPLY_TO_SENDER=0;
+}
+
+
+void header()
+{
+   fprintf(PC,"Advanced Science and Technology Institute\n");
+   fprintf(PC,"Embedded System Technologies\n");
+   fprintf(PC,"BSWM arQ Firmware v.4.0 2017\n");
+}
+
+
+
+void SensorInitialize()
+{
+   //disableBOOST1(); 
+   powerBoostConfig(0);
+   RAINCOUNT_TIPPING=0;
+   clearRainCumVars();      
+}
+
+void setInitialValues()
+{
+   char strx[20]={};
+   char charReply[2];
+   
+   readCharEE(EEPROM_SENDINGTIME_CHECK, charReply[0]);
+   if (charReply[0]!='$')                  
+   {
+      writeCharEE('$',EEPROM_SENDINGTIME_CHECK);
+      AddDataEEprom("15",EEPROM_SENDING_TIME);
+   } 
+   readDataEEprom(EEPROM_SENDING_TIME);
+   strcpy(strx,funcReturnVar);
+   SENDING_TIME = atoi(strx);
+   fprintf(PC,"Sending time=%i\n",SENDING_TIME);
+ 
+   readDataEEprom(EEPROM_SERVER_NUMBER);
+   strcpy(SERVERNUMBER,funcReturnVar);
+   fprintf(PC,"Server number=%s\n",SERVERNUMBER);
+  
+   readCharEE(EEPROM_SENSORTYPE_CHECK, charReply[0]);
+   if (charReply[0]!='$') // check if password is not present
+   {
+      writeCharEE('$',EEPROM_SENSORTYPE_CHECK); // write to password check
+      AddDataEEprom("BSWM",EEPROM_SENSOR_TYPE);
+   } 
+   readDataEEprom(EEPROM_SENSOR_TYPE);
+   strcpy(SENSORCONFIG,funcReturnVar);
+   fprintf(PC,"Sensor config=%s\n",SENSORCONFIG);
+   
+   readCharEE(EEPROM_PBOARDCONFIG_CHECK, charReply[0]);
+   if (charReply[0]!='$') // check if password is not present
+   {
+      writeCharEE('$',EEPROM_PBOARDCONFIG_CHECK); // write to password check
+      AddDataEEprom("10",EEPROM_PBOARD_CONFIG);
+   } 
+   readDataEEprom(EEPROM_PBOARD_CONFIG);
+   strcpy(PBOARDCONFIG,funcReturnVar);
+   fprintf(PC,"Power board config=%s\n",PBOARDCONFIG);
+   
+   //BATTERYUSED = readCharEE(346);
+   //BATTERYUSED=0;
+   
+   readCharEE(EEPROM_PASSWORD_CHECK, charReply[0]);
+   if (charReply[0]!='$') // check if password is not present
+   {
+      writeCharEE('$',EEPROM_PASSWORD_CHECK); // write to password check
+      AddDataEEprom("BSWM",EEPROM_PASSWORD);
+   }   
+   readDataEEprom(EEPROM_PASSWORD);   
+   strcpy(strx,funcReturnVar);
+   fprintf(PC,"Password=%s\n",strx);
+   
+   readDataEEprom(EEPROM_SERVER_IP);
+   strcpy(SERVERIP,funcReturnVar); // get server ip
+   //fprintf(PC,"serverip=%s\n",SERVERIP);
+   
+   readCharEE(EEPROM_SATELLITE_STATUS, charReply[0]);
+   charReply[1] = '\0';
+   SATELLITE_FLAG = atoi(charReply);
+   //fprintf(PC,"Satellite=%i\n",SATELLITE_FLAG);
+   
+/*   
+   readCharEE(EEPROM_DEPLOY_STATUS, charReply[0]);  // for deploy
+   if (charReply[0]=='Y')
+   {
+      fprintf(PC,"findEndChar..\n");
+      findEndChar();
+   }   
+   else
+      fprintf(PC,"TESTING MODE..\n");
+*/      
+}
+
+void mcuStatusOnStartUp()
+{
+   char strx[20] = {};
+   char *msgP1=NULL;
+   
+   switch ( restart_cause() )
+   {
+      
+      case WDT_TIMEOUT:
+      {
+         strcpy(DESIRED_RESPONSE, "+CCLK: ");
+         clear_buffer();
+         fprintf(SERIAL_INT,"AT+CCLK?\r");
+         delay_ms(200);
+         msgP1 = GetResponse();
+         if (msgP1)
+            strcpy(strx,"WATCHDOG TIMEOUT");
+         break;
+      }
+      
+      case NORMAL_POWER_UP:
+      {
+         strcpy(strx,"NORMAL POWER UP!");
+         break;
+      }
+      
+      case RESET_INSTRUCTION:
+      {
+         readDataEEprom(EEPROM_RESET_NUMBER);
+         strcpy(strx, "SOFTWARE RESET: ");
+         strcat(strx, funcReturnVar);
+         break;
+      }
+      default:
+      {
+         strcpy(strx,"MANUAL RESET");
+      }
+   }
+   clear_buffer();
+   delay_ms(200);
+   fprintf(PC,"%s\n",strx);
+   fprintf(SERIAL_INT,"%s\n",strx);
+   strcpy(SMS_TOBE_SENT,strx);
+   SendSMS(SERVERNUMBER);   
+}
+
+void main(){
+   int1 unsentCnt=0;
+   int1 whilex=0;
+   int1 sendSMSresult=0;
+   //int1 statGprs=0;
+   
+   delay_ms(2000);
+   bootloadFlag();
+   
+   disableBatteryControl();  // select higher voltage
+   
+   setup_adc(ADC_CLOCK_DIV_16); 
+   setup_adc_ports(sAN0 | sAN4 | sAN5 | sAN7 | sAN8 | sAN12 | sAN13 | sAN14 | sAN15);  // set up which ports will act as adc ports and not use their special functions
+   
+   setup_timer_1(T1_EXTERNAL|T1_DIV_BY_1|T1_ENABLE_SOSC); //no T1_CLK_OUT
+   setup_spi(SPI_MASTER|SPI_L_TO_H | SPI_XMIT_L_TO_H | SPI_CLK_DIV_64);  // enable hardware spi pins
+   
+   
+   setup_wdt(WDT_ON);  // enable watch dog
+   enable_interrupts(INT_TIMER1); // enable timer1 interrupt
+                                  // through the use of the 32 khz oscillator, it will be triggered every second
+   enable_interrupts(INT_RDA);    // hardware UART interrupt, used by GSM module
+   enable_interrupts(INT_RDA2);   // hardware UART interrupt, used by PC through RS232 interface via the USB port
+   enable_interrupts(INT_EXT);    // B0 used by rain gauge
+   enable_interrupts(INT_EXT1);   // RING OUT - will be triggered once a call or text is received by the gsm module
+   enable_interrupts(INT_EXT2);   // B2 - used by the sunshine duration sensor
+   enable_interrupts(GLOBAL);     // main switch for all the interrupts
+   //enable_interrupts(INT_EXT3); //B3
+   
+   ext_int_edge(0,L_TO_H);         // configure what state change will the interrupts trigger           
+   ext_int_edge(2,H_TO_L);         // these are for both ext and ext2
+   //ext_int_edge(3,L_TO_H);
+   
+   ledConfig(LED_GREEN);           // configure the dual color led
+   header();                
+   
+   
+   //----------------- REGISTER DEFAULT NUMBERS
+//!   AddDataEEprom("09334556445",1);     // register numbers
+//!   AddDataEEprom("09178747367",1);
+   //AddDataEEprom("09265288991",1);
+   //AddDataEEprom("09478469405",1);
+   //AddDataEEprom("09176023735",1);
+   //AddDataEEprom("09293175812",1);
+   //AddDataEEprom("202.90.158.12",6);
+   
+   //----------------- GSM INITIALIZATION
+   InitGSM();                      // initialize GSM
+   //InitICP(0);                   // this is used if we would configure the GPRS settings
+   rtc_acquire_sync();             // sync datetime from rtc chip to both GSM and MCU
+   clear_buffer(); 
+   clear_inputs();                  //delete messages from inbox
+   
+   sht_init();                      // initialize sht module
+   DTFOpen();                       // initialize flash
+   SetSizeFT();
+   setInitialValues();              // initialize config settings
+   SensorInitialize();
+   mcuStatusOnStartUp();            // check status on startup and send to servernumber
+                                    // options are [normal power up, watch dog timeout, reset through sms, manual reset]
+//-----------------    
+   delay_ms(500);
+   SAMPLINGFLAG=0;
+   do{
+      restart_wdt();
+      whilex=0;
+      if (INTSERIAL2_FLAG==1)              // if there is a character from USB, the interrupt will trigger            
+      {
+         delay_ms(200);
+         RXD2_DATA[WRITE2_CNTR-1]='\0';
+         if (!stricmp(RXD2_DATA,"debug")) // if data from USB = debug, it will go into debug mode
+         {
+            
+            ledConfig(LED_GREEN);
+            clear_buffer2();
+            whilex=1;
+            debugMenu();
+            while(whilex==1)
+            {
+               if (debugDetails())
+                  whilex=0;
+            }
+         }
+         clear_buffer2();
+      }
+      else
+      {
+         selectPowerSource();                  // check what battery to use and if power saving feature is activated
+         delay_ms(500);
+         if (INTERRUPTCHECKER++ > 150)        // this will reset the arq in case interrupts suddenly stops functioning 
+         {
+            AddDataEEprom("INTPROB",EEPROM_RESET_NUMBER);
+            reset_cpu();
+         }
+         
+         if (EXT_FLAG==1)                      // will be triggered if a call is made or an sms is received
+         {
+            ledConfig(LED_GREEN);
+            clear_buffer();
+            strcpy(RXD_DATA,SMS_RCV);
+            WRITE_CNTR = strlen(RXD_DATA);
+            proc_receive();
+            delay_ms(200);
+            EXT_FLAG=0;
+         }
+         if (TESTFLAG==TRUE)    // check voltage values of both batteries and check if gsm is still working provided it is not on power saving mode
+         {                    
+            compareSourceVoltages(DISPLAY_ONLY); // just to display voltages of primary and secondary batteries
+            
+            if (POWERSAVING != ACTIVATE)
+            {
+               
+               if(!testGSM())                    // check if gsm is still functioning
+               {
+                  ledConfig(LED_OFF);
+                  ShutDownGSM();
+                  delay_ms(10000);
+                  InitGSM();
+                  delay_ms(5000);
+               }
+               
+            }
+            
+            TESTFLAG=FALSE;
+         }
+         if (RESETFLAG==TRUE)
+         {
+            RESETFLAG=FALSE;
+            clearRainCumVars();
+         }
+         
+         if (POWERSAVING != ACTIVATE)
+         {
+            ledToggle(LED_GREEN);
+            if (SYNCFLAG==TRUE)                 
+            {
+               {
+                  fprintf(PC,"Time Sync\n");
+                  SYNCFLAG = FALSE;             // two minutes before reaching the next hour, this will be activated
+                  rtc_acquire_sync();           // sync rtc datetime to both mcu and gsm 
+               }
+            }
+            
+            if (SUNSHINE_RESET_FLAG==TRUE)      // used by bswm
+            {
+               SUNSHINE_RESET_FLAG=FALSE;
+               sunshineReset();
+            }
+            
+            //fgets(FROMSERIALPC,PC);
+
+
+            if (SAMPLINGFLAG == TRUE)
+            {
+               ledConfig(LED_GREEN);
+               counterNewYear();                // was needed before since a bug in the gsm module, resets the datetime of the gsm module every time it reaches a new year    
+               SAMPLINGFLAG = FALSE;
+               
+               if (unsentCnt != 0) //check if there are failed messages
+               {
+                  unsentCnt = findUnsentAndSend(1, unsentDTFByteCnt, unsentDTFPageCnt);
+               }
+               clear_buffer();
+               delay_ms(200);
+               sensorPoll();
+               strcpy(SMS_TOBE_SENT, REALDATA);
+               sendSMSresult = AttemptToSend();
+               if (sendSMSresult==0)
+               {
+                  if (unsentCnt!=1)
+                  {
+                     unsentCnt=1;
+                     unsentDTFPageCnt=DTFPageCnt;
+                     unsentDTFByteCnt=DTFByteCnt;
+                  }                  
+                  fprintf(PC,"MESSAGE SENT FAILED\n");
+               }
+               if (GPRS_FIRMWARE_STATUS != 1)
+                  DTFWriteToFlash(REALDATA,strlen(REALDATA),0);
+               if ((sendSMSresult==0) && (SATELLITE_FLAG == 1))
+                  satelliteSend();
+            }
+         }
+         else
+            ledToggle(LED_RED);               // if power saving is activated
+         if (RESETCPU == 1)
+         {
+            fprintf(PC,"daily GSM reset..\n");
+            RESETCPU=0;
+            ShutDownGSM();
+            delay_ms(10000);
+            InitGSM();
+         }            
+      }         
+   }while(1);
+}
+

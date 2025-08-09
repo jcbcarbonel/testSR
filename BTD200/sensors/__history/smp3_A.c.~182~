@@ -1,0 +1,139 @@
+int1 CalcCRC16B(char *SC_Buffer,int SC_Amount, char *retVal)
+{
+   // locals
+   unsigned int16 Crc;
+   int n, m, x;
+   char CRC_H;
+   char CRC_L;
+   //int i;
+   /*
+   fprintf(PC,"\nBuffer: ");
+   for(i=0;i<SC_Amount;i++)
+      {fprintf(PC,"%X ",SC_Buffer[i]);}
+   fprintf(PC,"\nAmount: %i",SC_Amount);
+   */
+   
+   // initialisation
+   Crc= 0xFFFF;
+   //m= SC_Amount-2;
+   
+   m= SC_Amount;
+   
+   x= 0;
+   // loop over all bits
+   while(m>0)
+      {//fprintf(PC,"\nBuff[%i]=%X",x,SC_Buffer[x]);
+       Crc^= SC_Buffer[x];
+   
+       for(n=0; n<8; n++)
+         {
+          if(Crc&1)
+            {
+             Crc>>= 1;
+             Crc^= 0xA001;
+            }
+          else
+             Crc>>= 1;
+         }
+       m--; 
+       x++;
+      }
+   // result
+   CRC_H= (Crc>>8)&0xFF;
+   CRC_L= Crc&0xFF;
+   
+   fprintf(PC,"\nCRC_H: %X, CRC_L: %X\n",CRC_H,CRC_L);
+   retVal[0]=CRC_L;
+   retVal[1]=CRC_H;
+   retVal[2]='\0';
+   /*
+   if(CRC_H==SC_Buffer[SC_Amount-2]&&CRC_L==SC_Buffer[SC_Amount-1])
+      {return TRUE;}
+   else
+      {return FALSE;}
+   */   
+}// end CalcCRC16
+
+
+void addCRCtoFile(char *SC_Buffer,int SC_Amount)
+{
+   //char datax[20]={};
+   char retVal[4]={};
+   //int data_amount=0;
+   
+   //strcpy(datax,SC_Buffer);
+   //data_amount = SC_Amount;
+   CalcCRC16B(SC_Buffer,SC_Amount,retVal);
+   fprintf(PC,"%x %x\n",retVal[0],retVal[1]);
+   SC_Buffer[SC_Amount] = retVal[0];
+   SC_Buffer[SC_Amount+1] = retVal[1];
+}
+
+int1 dataPresent_smp3()
+{
+   int16 timeOut=0;
+   
+   while(!kbhit(RS485_SMP3A)&&++timeOut<50000)
+   { delay_us(100); }
+   if(!kbhit(RS485_SMP3A))
+      return 0;
+   else
+      return 1;
+}
+
+void testingExtractSMP3()
+{
+   //char strx[21] ={0x30,0x30,0x62,0x40,0xc0,0x80,0x84,0x00,0x00,0x01,0x02,0x01,0x02,0x00,0x05,0x01,0x2c,0x00,0xbb,0x6d,0x8b};
+   char strx[21] ={0x30,0x30,0x62,0x40,0xc0,0x80,0x84,0x00,0x00,0x03,0xe5,0x01,0x02,0x00,0x05,0x01,0x2c,0x00,0xbb,0x6d,0x8b};
+   int16 solar_rad=0;
+   
+   
+   solar_rad = make16(strx[9],strx[10]);
+   fprintf(PC,"solar_rad=%li\r",solar_rad);
+   itoa(solar_rad,10,funcReturnVar);
+   fprintf(PC,"funcReturnVar=%s\r",funcReturnVar);
+}
+
+
+void extractDataSMP3A(char *datax, int dataAmount)
+{
+   int1 boolx=0;
+   int1 dp=0;
+   int i=0;
+   int x=0;
+   char cx[55]={};
+   char chx;
+   int16 solar_rad=0;
+   
+   delay_ms(100);
+   writeToRS485();
+   delay_ms(100);
+   for (x=0;x<dataAmount;x++)
+   {
+      fprintf(RS485_SMP3A,"%c",datax[x]);
+   }      
+   
+   readFromRS485();
+   x=0;      
+   dp = dataPresent_smp3();
+   fprintf(PC,"%i\n",dp);
+   if (dp == 1)
+   {
+      while(i<21)
+      {
+         cx[i]=fgetc(RS485_SMP3A);
+         i++;
+      }
+      while(x<i)
+      {
+         fprintf(PC,"%x ",cx[x++]);
+      }
+      fprintf(PC,"\n");
+      solar_rad = make16(cx[9],cx[10]);
+      itoa(solar_rad,10,funcReturnVar);
+   }
+   else
+      strcpy(funcReturnVar,"smp3_err");
+   
+   fprintf(PC,"\nSMP3A=%s\n",funcReturnVar);
+}

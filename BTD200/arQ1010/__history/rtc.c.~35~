@@ -1,0 +1,352 @@
+#define RTC_I2C_ADDR_2129     81
+#define RTC_I2C_ADDR_8523     104
+#define RTC_CONTROL1_REG      0x00
+#define RTC_CONTROL2_REG      0x01
+#define RTC_CONTROL3_REG      0x02
+
+#define RTC_SEC_REG           0x03
+#define RTC_MIN_REG           0x04
+#define RTC_HOUR_REG          0x05
+#define RTC_DATE_REG          0x06
+#define RTC_WEEKDAY_REG       0x07
+#define RTC_MONTH_REG         0x08
+#define RTC_YEAR_REG          0x09
+
+
+int8 get_ack_status(int8 address)
+{ 
+   int8 status; 
+   
+   i2c_start(); 
+   status = i2c_write(address);  // Status = 0 if got an ACK 
+   i2c_stop(); 
+   
+   if(status == 0) 
+      return(TRUE); 
+   else 
+      return(FALSE); 
+}
+
+int32 rtcGetEpochDate(int32 year, int month, int day)
+{
+    if (year >= 1900)
+    {
+        year -= 1900;
+    }
+    
+    /* month must be cast to uint8_t or this fails on some platforms */
+    int8 m = (int8)(month & 0xFF);
+    return (1461 * (year + 6700 + (m - 14) / 12)) / 4 + (367 *
+        (m - 2 - 12 * ((m - 14) / 12))) / 12 -
+        (3 * ((year + 6800 + (m - 14) / 12) / 100)) / 4 +
+        day - 2472663;
+}
+
+int rtcAssignWeekday(int32 years, int months, int days)
+{
+    int32 NrOfDay=0;
+    int8 weekday=0;
+    NrOfDay = rtcGetEpochDate(years, months, days);
+    weekday = (NrOfDay + 3) % 7;
+    //fprintf(PC,"NrOfDay=%lu\n",NrOfDay);
+    //fprintf(PC,"weekday=%u\n",weekday);
+    return weekday;
+}
+
+int8 rtcBCDToDec(int8 val)
+{
+    return (val >> 4) * 10 + (val & 0x0F);
+}   
+
+int8 rtcDecToBCD(int8 val)
+{
+    return ((val / 10) << 4) | (val % 10);
+}
+/*
+void GetDateTime()
+{
+   
+   int ii=0;
+   int xx=0;
+   char forTime[5]={};
+   char strDateTime[20] ={};
+   
+   strcpy(funcReturnVar,"");
+   for (xx=0;xx<=5;xx++) 
+   {
+      switch(xx) {
+         case 0:
+            itoa(years,10,forTime);
+            break;
+         case 1:
+            itoa(months,10,forTime);
+            break;
+         case 2:
+            itoa(days,10,forTime);
+            break;
+         case 3:
+            itoa(hours,10,forTime);
+            break;
+         case 4:
+            itoa(minutes,10,forTime);
+            break;
+         case 5:
+            itoa(seconds,10,forTime);
+            break;
+      }
+      if (strlen(forTime)==4) {
+         strDateTime[ii++] = forTime[2];
+         strDateTime[ii++] = forTime[3];
+         strDateTime[ii++] = ':';
+         }
+      else if (strlen(forTime)<2) {
+         strDateTime[ii++] = '0';
+         strDateTime[ii++] = forTime[0];
+         strDateTime[ii++] = ':';
+         }
+      else if (strlen(forTime)==2)  {
+         strDateTime[ii++] = forTime[0];
+         strDateTime[ii++] = forTime[1];
+         strDateTime[ii++] = ':';
+         }
+      else {
+         strDateTime[ii++] = '0';
+         strDateTime[ii++] = '0';
+         strDateTime[ii++] = ':';
+         }
+   }
+   ii--;
+   strDateTime[ii] = '\0';
+  fprintf(PC,"strDateTime=%s\n",strDateTime);
+   //strcpy(funcReturnVar,strDateTime);
+}
+*/
+
+// if storeToVariables = 1 then store rtc configs to date and time variables
+// used to read configs from rtc chip 
+char *readRtc(int1 storeToVariables)
+{
+   int seconds=0;
+   int minutes=0;
+   int hours=0;
+   int days=0;
+   int months=0;
+   int years=0;
+    
+   //char dateTime[20]={};
+   int status=0;
+   int data[8];
+   int i=0;
+   
+   char *ptr;
+   
+   i2c_start();
+   i2c_write(0xA2);  
+   i2c_write(RTC_SEC_REG);
+   i2c_stop(); 
+   
+   i2c_start();
+   status = i2c_write(0xA2|0x01);
+   //fprintf(PC,"for reading=%x\n",status);
+   
+   for (i=0;i<7;i++)
+      data[i] = i2c_read();
+   i2c_stop(); 
+   
+   seconds  = rtcBCDToDec(data[0] & 0x7F);
+   minutes  = rtcBCDToDec(data[1]);
+   hours  = rtcBCDToDec(data[2]);
+   days  = rtcBCDToDec(data[3]);
+   months  = rtcBCDToDec(data[5]);
+   years  = rtcBCDToDec(data[6]);
+   //timezone = rtcBCDToDec(data[7]);
+   
+/*   
+   fprintf(PC,"sec=%u\n",seconds);
+   fprintf(PC,"minutes=%u\n",minutes);
+   fprintf(PC,"hours=%u\n",hours);
+   fprintf(PC,"days=%u\n",days);
+   fprintf(PC,"months=%u\n",months);
+   fprintf(PC,"years=%u\n",years);
+*/  
+
+   sprintf(ptr,"%u/%u/%u,%u:%u:%u",years,months,days,hours,minutes,seconds);
+   fprintf(USB,"RTC date and time: %s\n",ptr);
+   
+   if (storeToVariables==TRUE) // should be outside this function...
+   {
+      SEC = seconds;
+      MIN = minutes;
+      HOUR = hours;
+      DAY = days;
+      MONTH = months;
+      YEAR = years;
+      fprintf(USB,"MCU clock set\n");
+   }
+   
+   
+//!   sprintf(funcReturnVar,"%u/%u/%u,%u:%u:%u",YEAR,MONTH,DAY,HOUR,MIN,SEC);
+//!   fprintf(USB,"MCU date and time: %s\n",funcReturnVar);
+   
+   return ptr;
+   
+}
+
+
+void configI2C(int param1, int param2)
+{
+   i2c_start(); 
+   i2c_write(0xA2);  // Status = 0 if got an ACK 
+   i2c_write(param1);
+   i2c_write(param2);
+   i2c_stop();
+}
+
+void setRtc(char *input)
+{
+    int seconds=0;
+    int minutes=0;
+    int hours=0;
+    int days=0;
+    int months=0;
+    int years=0;
+    
+    char temp[20]={};
+    char tempx[3]={};
+    char *ptr;
+    
+   strcpy(TOKEN,"/,:\"");       //yy/mm/dd,hh:mm:ss
+   strcpy(temp,input);
+   delay_ms(150);
+   ptr = strtok(temp,TOKEN);
+   strcpy(tempx,ptr);
+//!   YEAR = atoi(tempx);
+   years  = rtcDecToBCD(atoi(tempx));
+   //YEAR = YEAR + 2000;
+   
+   ptr = strtok(0,TOKEN);
+   strcpy(tempx,ptr);
+//!   MONTH = atoi(tempx);
+   months  = rtcDecToBCD(atoi(tempx));
+   
+   ptr = strtok(0,TOKEN);
+   strcpy(tempx,ptr);
+//!   DAY = atoi(tempx);
+   days  = rtcDecToBCD(atoi(tempx));
+   
+   ptr = strtok(0,TOKEN);
+   strcpy(tempx,ptr);
+//!   HOUR = atoi(tempx);
+   hours  = rtcDecToBCD(atoi(tempx));
+   
+   ptr = strtok(0,TOKEN);
+   strcpy(tempx,ptr);
+//!   MIN = atoi(tempx);
+   minutes  = rtcDecToBCD(atoi(tempx));
+   
+   ptr = strtok(0,TOKEN);
+   strcpy(tempx,ptr);
+//!   SEC = atoi(tempx);
+   seconds  = rtcDecToBCD(atoi(tempx));   
+   
+//!    minutes  = rtcDecToBCD(MIN);
+//!    hours    = rtcDecToBCD(HOUR);
+//!    days     = rtcDecToBCD(DAY);
+//!    months   = rtcDecToBCD(MONTH);
+//!    years    = rtcDecToBCD(YEAR);
+//!
+    configI2C(RTC_SEC_REG, seconds);
+    configI2C(RTC_MIN_REG, minutes);
+    configI2C(RTC_HOUR_REG, hours);
+    configI2C(RTC_DATE_REG, days);
+    configI2C(RTC_MONTH_REG, months);
+    configI2C(RTC_YEAR_REG, years);
+   // readRtc(0);
+   
+   //fprintf(USB, "RTC updated\n");
+}
+
+/*
+void rtcCreateTime(char *strx)
+{
+    //yy,mm,dd,hh,mm,ss
+    char strDate[20]={};
+    char tempx[5]={};
+    
+    
+    
+    char *ptr=NULL;
+    char term[3]={};
+    int i=0;
+    
+    strcpy(term,",");
+    strcpy(strDate,strx);
+    fprintf(PC,"strDate=%s\n",strDate);
+    ptr = strtok(strDate,term);
+    strcpy(tempx,ptr);
+    years = atol(tempx);
+    while(ptr!=0)
+    {
+      ptr = strtok(0,term);
+      if (i==0)
+      {
+         strcpy(tempx,ptr);
+         months = atoi(tempx);
+      }         
+      else if (i==1)
+      {
+         strcpy(tempx,ptr);
+         days = atoi(tempx);
+      }
+      else if (i==2)
+      {
+         strcpy(tempx,ptr);
+         hours = atoi(tempx);
+      }
+      else if (i==3)
+      {
+         strcpy(tempx,ptr);
+         minutes = atoi(tempx);
+      }
+      else if (i==4)
+      {
+         strcpy(tempx,ptr);
+         seconds = atoi(tempx);
+      }
+      else
+         break;
+      i++;
+    }
+    
+    //years = years + 2000;
+    weekdays = rtcAssignWeekday(years, months, days );
+   
+//    fprintf(PC,"*** ini settings ***\n");
+//    fprintf(PC,"seconds=%u\n",seconds);
+//    fprintf(PC,"minutes=%u\n",minutes);
+//    fprintf(PC,"hours=%u\n",hours);
+//    fprintf(PC,"days=%u\n",days);
+//    fprintf(PC,"weekdays=%u\n",weekdays);
+//    fprintf(PC,"months=%u\n",months);
+//    fprintf(PC,"years=%u\n",years);
+
+    seconds  = rtcDecToBCD(seconds);
+    minutes  = rtcDecToBCD(minutes);
+    hours    = rtcDecToBCD(hours);
+    days     = rtcDecToBCD(days);
+    weekdays = rtcDecToBCD(weekdays);
+    months   = rtcDecToBCD(months);
+    years    = rtcDecToBCD(years);
+
+    fprintf(PC,"------------write settings====\n");
+    configI2C(RTC_SEC_REG, seconds);
+    configI2C(RTC_MIN_REG, minutes);
+    configI2C(RTC_HOUR_REG, hours);
+    configI2C(RTC_DATE_REG, days);
+    configI2C(RTC_WEEKDAY_REG, weekdays);
+    configI2C(RTC_MONTH_REG, months);
+    configI2C(RTC_YEAR_REG, years);
+}
+*/
+
+

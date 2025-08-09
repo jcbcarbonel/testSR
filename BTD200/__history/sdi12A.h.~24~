@@ -1,0 +1,31 @@
+// pin assignments of rx and tx doesnt matter since they are connected 
+// however, invert is needed in the #use rs232 config
+
+//#byte   TXEN = 0xAC                          //transmit enable register
+
+#define PIN_TX    PIN_E2                     //transmit PIN
+#define PIN_RX    PIN_E3                     //receive PIN
+
+//!#define PIN_TX_B    PIN_H1                     //transmit PIN
+//!#define PIN_RX_B    PIN_H0                     //receive PIN
+
+//#define PIN_TX    PIN_C4                     //transmit PIN
+//#define PIN_RsdiX    PIN_C5                     //receive PIN
+
+///////////////////////////////////////////////////////////////////////////////
+// SDI-12 standard baudrate=1200, parity=even, bit=7, stop bit=1, stream=SDI12
+///////////////////////////////////////////////////////////////////////////////
+//#use rs232(force_sw,invert,baud=1200,BRGH1OK, parity=e, bits=7, stop=1,xmit=PIN_TX,rcv=PIN_RX, stream=SDI12)
+#use rs232(invert,baud=1200,BRGH1OK, parity=e, bits=7, stop=1,xmit=PIN_TX,rcv=PIN_RX, stream=SDI12)
+//#use rs232(invert,baud=1200,BRGH1OK, parity=e, bits=7, stop=1,xmit=PIN_TX_B,rcv=PIN_RX_B, stream=SDI12B)
+//#use rs232(baud=12200,BRGH1OK, parity=n, bits=8, stop=1,xmit=PIN_TX,rcv=PIN_RX, stream=Flas
+
+void sdi12A_start();
+void sdi12A_end();
+void sdi12A_receive(int1 cpx);
+void sdi12A_startdata(char c);
+void sdi12A_address();
+void sdi12A_getData(char c);
+void sdi12A_probeId(char c);
+int1 sdi12A_process(char *cmdx);
+int1 sdi12A_DUAL_return(char *cmdx, int1 dualOn);

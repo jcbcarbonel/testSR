@@ -1,0 +1,110 @@
+
+
+void powerSavingOff()
+{
+   char sendtime[5]={};
+   
+   clear_buffer();
+   delay_ms(100);
+   if (POWERSAVING == 1)
+   {
+      fprintf(PC,"POWER SAVING 1 DEACTIVATED");
+      strcpy(SMS_TOBE_SENT,"POWER SAVING 1 DEACTIVATED\n");
+      SendSMS(SERVERNUMBER); 
+   }
+   else if (POWERSAVING == 2)
+   {
+      InitGSM();
+      delay_ms(1000);
+      fprintf(PC,"POWER SAVING 2 DEACTIVATED");
+      strcpy(SMS_TOBE_SENT,"POWER SAVING 2 DEACTIVATED\n");
+      SendSMS(SERVERNUMBER); 
+   }
+   POWERSAVING = 0;
+   
+   readDataEEprom(3);
+   strcpy(sendtime,funcReturnVar);
+   SENDING_TIME = atoi(sendtime);
+   
+   sensorPinIniState();
+}
+
+void powerSaving1()
+{
+   clear_buffer();
+   delay_ms(100);
+   POWERSAVING = 1;
+   strcpy(SMS_TOBE_SENT,"POWER SAVING 1 ACTIVATED");
+   fprintf(PC,"POWER SAVING 1 ACTIVATED\n");
+   SendSMS(SERVERNUMBER); 
+   SENDING_TIME = 0;
+}
+
+void powerSaving2()
+{
+   //fprintf(PC,"server number = %s\n",SERVERNUMBER);
+   strcpy(SMS_TOBE_SENT,"POWER SAVING 2 ACTIVATED");
+   clear_buffer();
+   delay_ms(200);
+   SendSMS(SERVERNUMBER); 
+   delay_ms(1100);
+   POWERSAVING = 2;
+   fprintf(PC,"POWER SAVING 2 ACTIVATED\n");
+   ShutDownGSM();
+   disableBOOST2();
+   disableBOOST1();
+}
+
+void PowerSavingCheck1()
+{
+   float adcValue=0;
+   
+   adcValue = batExt_adc(8);
+   fprintf(PC,"\nadcExt=%2.1f\n",adcValue);
+   if (adcValue>=11.9)
+   {
+      powerSavingOff();
+   }
+   else if ((adcValue<11.6) && (adcValue>=11.0))
+   {
+      if (POWERSAVING == 0)
+         powerSaving1();
+   }
+   else if (adcValue < 11.0)
+   {
+      if (POWERSAVING != 2)
+         powerSaving2();
+   }
+}
+
+
+
+void PowerSavingCheck0()
+{
+   float adcValue=0;
+   
+   adcValue = batAdc();
+   fprintf(PC,"\nadcValue=%2.1f\n",adcValue);
+   if (adcValue>=3.8)
+   {
+      powerSavingOff();
+   }
+   else if ((adcValue<3.6) && (adcValue>=3.2))
+   {
+      if (POWERSAVING == 0)
+         powerSaving1();
+   }
+   else if (adcValue < 3.2)
+   {
+      if (POWERSAVING != 2)
+         powerSaving2();
+   }
+}
+
+void PowerSavingIdentify()
+{
+   if (BATTERYUSED == 0)
+      PowerSavingCheck0();
+   else if (BATTERYUSED == 1)
+      PowerSavingCheck1();
+}

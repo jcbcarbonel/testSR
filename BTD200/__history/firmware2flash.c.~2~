@@ -1,0 +1,94 @@
+
+
+int1 checkCRCfirmwareData(char *strx)
+{
+   int8  checksum,i,atoix,msgSize=0;
+   char strTemp[70]={};
+   
+   strcpy(strTemp,strx);
+   msgSize = strlen(strTemp);
+   msgSize++;
+   checksum = 0;  // Sum the bytes to find the check sum value
+   if (strTemp[0] == ':')
+   {
+      for (i=1; i<(msgSize-3); i+=2)
+         checksum += atoi_b16 (&strTemp[i]);
+      checksum = 0xFF - checksum + 1;
+      atoix = atoi_b16 (&strTemp[msgSize-3]);
+      
+      if (checksum != atoix)
+         return 0;
+      else
+         return 1;
+   }
+   else
+      return 1;
+}
+
+
+void downloadFirmware()
+{
+   int1 checkRes=0;
+   char buffer[70]={};
+   int  buffidx=0;
+   
+   
+   //fprintf(PC,"\nbefore good data\n");
+   fprintf(PC,"%c",GOOD_DATA);
+   //fprintf(PC,"\nafter good data\n");
+   
+   
+   DTFByteCnt = 0;
+   DTFPageCnt=0;
+   
+   while (1)  // Loop until the entire program is downloaded
+   {
+      //output_high(STAT_PIN);
+      ledConfig(LED_GREEN);
+      buffidx = 0;  // Read into the buffer until 0x0D ('\r') is received or the buffer is full
+      /*
+         zz=0;
+         while((!kbhit(PC)) && (zz++ < 20000))
+         {
+            output_low(STAT_PIN);
+         }
+         if (zz > 20000)
+            return 0;
+      */
+      
+      do{
+         //while((!kbhit(PC)) && (zz++ < 20000));
+         //if (zz > 20000)
+         //   break; 
+         buffer[buffidx] = fgetc(PC);
+      } while (buffer[buffidx++] != '*');
+      output_low(STAT_PIN);
+      buffer[--buffidx] = '\0';
+      //if (strlen(buffer) < 2)
+      //   continue;
+      if (buffer[0]==';')
+      {
+         DTFWriteToFlash(buffer,strlen(buffer),0);
+         DTFRAMToPage(0,1);
+         break;
+      }
+      checkRes = checkCRCfirmwareData(buffer);
+      if (checkRes == 0)
+      {
+        fprintf(PC,"%c",BAD_DATA);
+         delay_ms(1);
+      }
+      else
+      {
+         
+         DTFWriteToFlash(buffer,strlen(buffer),0);
+         fprintf(PC,"%c",GOOD_DATA);
+         delay_ms(1);
+      }
+   }
+}
+
+
+
+
+

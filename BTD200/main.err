@@ -1,0 +1,26 @@
+Compiling C:\Users\JohnCarloBCarbonel\gitProject\BTD200\main on 08-Aug-25 at 15:59
+>>> Warning 230 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\gsm.c" Line 4(1,1): String truncated
+>>> Warning 230 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\gsm.c" Line 5(1,1): String truncated
+>>> Warning 230 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\gsm.c" Line 6(1,1): String truncated
+>>> Warning 240 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\gsm.c" Line 15(21,26): Pointer types do not match
+>>> Warning 240 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\gsm.c" Line 15(48,57): Pointer types do not match
+>>> Warning 240 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\gsm.c" Line 19(24,29): Pointer types do not match
+>>> Warning 208 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\sensors\AS3935.c" Line 37(6,18): Function not void and does not return a value  Thunder_Init
+>>> Warning 203 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\main.c" Line 204(1,1): Condition always TRUE
+>>> Warning 216 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\main.c" Line 298(1,2): Interrupts disabled during call to prevent re-entrancy:  (@DIV88)
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\globalVariables.h" Line 25(6,15): Variable never used:   MYNUMBER1
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\dateTimeDetails.c" Line 61(10,13): Variable never used:   ptr
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\debugmode.c" Line 45(10,12): Variable never used:   yy
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\debugmode.c" Line 48(9,25): Variable never used:   debugDataInquire
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\debugmode.c" Line 49(9,18): Variable never used:   passwordx
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\debugmode.c" Line 51(9,13): Variable never used:   strx
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\debugmode.c" Line 52(9,15): Variable never used:   spacex
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\debugmode.c" Line 53(9,13): Variable never used:   temp
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\arQ1010\debugmode.c" Line 55(10,14): Variable never used:   ptrx
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\sensors\AS3935.c" Line 33(15,31): Variable never used:   interrupt_source
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\sensors\AS3935.c" Line 57(5,6): Variable never used:   i
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\sensors\AS3935.c" Line 58(5,12): Variable never used:   checker
+>>> Warning 202 "C:\Users\JohnCarloBCarbonel\gitProject\BTD200\main.c" Line 104(18,22): Variable never used:   tmp1
+      Memory usage:   ROM=18%      RAM=37% - 46%
+      0 Errors,  22 Warnings.
+Build Successful.

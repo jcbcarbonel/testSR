@@ -1,0 +1,122 @@
+
+//**** RS485 *****//
+#define  TX2_RS485        PIN_E4
+#define  RX2_RS485        PIN_E7
+#define  EN_DE_RS485        PIN_E5
+#define  EN_RE_RS485        PIN_E6
+
+//**** EXPOSED PIN FOR RS232
+#define  EN_UART        PIN_D1
+
+//**** I2C PINS 
+#define  EN_I2C   PIN_D4
+#define  SDA_I2C  PIN_D5
+#define  SCL_I2C  PIN_D6
+
+//**** SWITCH TO SELECT WHAT BATTERY TO USE
+#define  ENBA     PIN_J2
+#define  ENBB     PIN_J3
+
+//**** GSM
+#define  RING_OUT    PIN_B1
+#define  RTS      PIN_A6
+#define  pin_CTS      PIN_A7
+#define  IGT      PIN_C2
+
+//**** HARDWARE UART
+#define  RX_INT      PIN_C6
+#define  TX_INT      PIN_C5
+#define  RX_PC       PIN_G2
+#define  TX_PC       PIN_G1
+
+//**** RS232
+#define  TX_B        PIN_G4
+#define  RX_B        PIN_G3
+
+//**** DIGITAL OUT
+#define  pin_OUT1        PIN_A3
+#define  OUT2        PIN_A2
+#define  OUT3        PIN_A1
+
+//**** DIGITAL INPUTS
+#define  INTRUP4     PIN_D7
+#define  INTRUP1     PIN_B0
+#define  INTRUP2     PIN_B2
+#define  INTRUP3     PIN_B3
+
+//**** SPI
+#define  SDO1        PIN_C5
+#define  SDA1        PIN_C4
+#define  SCK1        PIN_C3
+#define  EN1         PIN_F4
+#define  CS1         PIN_F5
+
+//#define THUNDER_CS PIN_F4
+//#define SCP_CSB PIN_F4
+
+//**** FLASH CHIP ENABLE
+#define  CS          PIN_E0
+
+//**** USB PIN CHECK
+#define  pin_USB_STAT    PIN_G0
+
+//**** DUAL COLOR LED
+#define  LED_STAT_A     PIN_E1
+#define  LED_STAT_B     PIN_H3
+
+//**** SHT11
+#define  SHT_DATA_PIN       PIN_H2
+#define  SHT_CLK_PIN         PIN_B4
+
+
+//**** RESET
+#define  MCLR        PIN_G5
+
+//**** ADC
+#define  VBAT_ADC       PIN_F7  //channel 5 3.3V MONITORING
+#define  IBOOST_ADC     PIN_H4  //channel 12 BOOST MONITORING
+#define  VBOOST_ADC     PIN_H5  //channel 13 BOOST MONITORING
+#define  IBOOST2_ADC    PIN_H7  //channel 15 BOOST MONITORING
+#define  VBOOST2_ADC    PIN_H6  //channel 14 BOOST MONITORING
+#define  VEXT1_ADC      PIN_F3  //channel 8 EXTERNAL ADC1
+#define  VEXT2_ADC      PIN_F2  //channel 7 EXTERNAL ADC2
+#define  INA_ADC        PIN_A5  //channel 4 INPUT VOLTAGE MONITORING 1
+#define  INB_ADC        PIN_A0  //channel 0 INPUT VOLTAGE MONITORING 2
+
+#define  channel_VBAT_ADC       5  //channel 5 3.3V MONITORING
+#define  channel_IBOOST_ADC     12 //channel 12 BOOST MONITORING
+#define  channel_VBOOST_ADC     13  //channel 13 BOOST MONITORING
+#define  channel_IBOOST2_ADC    15  //channel 15 BOOST MONITORING
+#define  channel_VBOOST2_ADC    14  //channel 14 BOOST MONITORING
+#define  channel_VEXT1_ADC      8  //channel 8 EXTERNAL ADC1
+#define  channel_VEXT2_ADC      7  //channel 7 EXTERNAL ADC2
+#define  channel_INA_ADC        4  //channel 4 INPUT VOLTAGE MONITORING 1
+#define  channel_INB_ADC        0  //channel 0 INPUT VOLTAGE MONITORING 2
+
+
+//**** POWER BOARD PINS
+#define  pin_BOOST1          PIN_D0  //BOOST SWITCH
+#define  pin_BOOST2          PIN_F1  //BOOST SWITCH
+#define  pin_CHRG_STAT1     PIN_J7
+#define  pin_FAULT_STAT1    PIN_J6
+#define  pin_CHRG_STAT2     PIN_J4
+#define  pin_FAULT_STAT2    PIN_J5
+
+//!int1 TESTFLAG=0;
+//!int1 SYNCFLAG=0;
+//!int1 RESETFLAG=0;
+//!
+//!//int const CONNECT = 0xE0;
+//!int const DATETIME = 0xE1;
+//!int const SENSORTEST = 0xE2;
+//!int const FIRMWAREMODE = 0xE3;
+//!int const EXITCONFIG = 0xE4;
+//!int const FIRMWARECHAR = 0xE5;
+//!int const GOOD_DATA = 0xE6;
+//!int const BAD_DATA = 0xE7;
+//!int const SENSORINI = 0xE8;
+//!int const CONFIGSET = 0xEA;
+//!int const REDOWNLOADFIRMWARE = 0xEB;
+//!int const FIRMWAREFLASHDOWNLOAD = 0xEC;
+//!int const GSMTEST = 0xED;
+//!int const SATELLITE_TEST = 0xEE;

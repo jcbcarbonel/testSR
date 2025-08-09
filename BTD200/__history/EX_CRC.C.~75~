@@ -1,0 +1,15 @@
+int16 crc_generator(int8 *data, int16 len)
+{
+   int16 i;
+   int16 crc = 0xFFFF;
+   
+   while(Len--)
+   {
+      x = make8(crc,1) ^ *Buffer++;
+      x ^= x>>4;
+     
+      crc = (crc << 8) ^ (x << 12) ^ (x <<5) ^ x;
+   }
+   fprintf(PC,"CRC: %LX\n",crc);
+   return crc;
+}

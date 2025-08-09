@@ -1,0 +1,21 @@
+void initLTE()
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_InterruptGSM();
+   delay_ms(200);
+   fprintf(GSM,"init");
+   if(GetResponse())
+      fprintf(USB,"LTE Initialized\n");
+}
+
+
+void igtLTE()
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_InterruptGSM();
+   delay_ms(200);
+   fprintf(GSM,"igt");
+   if(GetResponse())
+      fprintf(USB,"LTE Ignited\n");
+      initLTE();
+}

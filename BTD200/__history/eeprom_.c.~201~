@@ -1,0 +1,281 @@
+void DelEepromPhoneNum()
+{
+   char EEchar=NULL;
+   int iiz=0;
+   
+   do{
+      EEchar = read_eeprom(iiz);
+      if (EEchar != '@')
+         write_eeprom(iiz,0);
+      else
+      {
+         write_eeprom(iiz,0);
+         return;
+      }
+      iiz++;
+   }while((iiz != 242));
+}
+
+void DelOneNum(char *num1)
+{
+   int prevAddr=0;
+   int nextAddr=0;
+   char EE1=NULL;
+   char EE2=NULL;
+   
+   prevAddr = ValidateNum(num1);
+   nextAddr = prevAddr;
+   fprintf(PC,"%i\n",nextAddr);
+   if (prevAddr!=254)
+   {
+      do
+      {
+         EE1 = read_eeprom(nextAddr++);
+         fprintf(PC,"%c\n",EE1);
+      }while(EE1!='*');
+      
+      do
+      {
+         EE1 = read_eeprom(nextAddr++);
+         fprintf(PC,"%c\n",EE1);
+         write_eeprom(prevAddr++,EE1);
+         EE2 = read_eeprom(prevAddr++);
+         fprintf(PC,"EE2:%c\n",EE2);
+      }while(EE1!='@');
+       strcpy(funcReturnVar,"Number deleted");
+   }
+   else
+      //fprintf(PC,"Not registered\n");
+      strcpy(funcReturnVar,"Not registered");
+}
+
+void listPhNum(int hbp)
+{
+   char Flist[150]={};
+   char EEchar=NULL;
+   int iiz=0;
+   int cntx=0;
+   int lenx=0;
+   
+   do {
+      EEchar = read_eeprom(iiz);
+      //fprintf(PC,"EECHAR: %c\n",EEchar);
+      if (EEchar != '*')
+      {
+         if ((hbp != 21) && (hbp != 22))
+         {
+            
+            Flist[lenx]=EEchar;
+            lenx++;
+            if (lenx >= 15)
+            {
+               //write_eeprom(iiz,0);
+               strcpy(funcReturnVar,"0");
+               return;
+            }               
+         }
+         else{
+            Flist[iiz]=EEchar; 
+            if(EEchar == 0xFF){
+               //fprintf(PC,"No registered number\n");
+               strcpy(funcReturnVar,"No registered number\n");
+               return;}
+         }
+      }
+      else
+      {
+         if (hbp == 21){
+            Flist[iiz]= '+';}
+         else if (hbp == 22){
+            Flist[iiz] = '\n';
+         }else
+         {
+            cntx++;
+            if (cntx == hbp)
+            {   
+               Flist[lenx] = '\0';
+               strcpy(funcReturnVar,Flist);
+               return;   
+            }
+            else
+            {
+               lenx=0;
+            }
+         }
+      }
+      iiz++;
+   }while((EEchar != '@') && (iiz != 242));
+   iiz = iiz - 2;
+   Flist[iiz]='\0';
+   strcpy(funcReturnVar,Flist);
+}
+
+void newEEData(char *eedata, unsigned int16 hbp)
+{
+   unsigned int16 zzx=0;
+   int dataFinder=0;
+   unsigned int16 NewDataLoc=0;
+   char xx;
+   
+   NewDataLoc = strlen(eedata) + hbp;
+   for (zzx=hbp;zzx<NewDataLoc;zzx++)
+   {
+      xx = eedata[dataFinder];
+      //fprintf(PC,"zzx=%li,char_=%c\n",zzx,xx);
+      write_eeprom(zzx,eedata[dataFinder++]);
+   }
+   write_eeprom(zzx,'*');
+}
+
+void AddDataEEprom(char *data,int hbp)
+{
+   int iiz=0;
+   unsigned int16 zzx=0;
+   int dataFinder=0;
+   unsigned int16 NewDataLoc=0;
+   char DataEEprom;
+   
+   switch(hbp)
+   {
+      case 1:    //stores into eeprom the authorized phone numbers
+         if (ValidateNum(data) == 254)
+         {
+            iiz=0;
+            NewDataLoc = strlen(data);
+            do {
+               DataEEprom = read_eeprom(iiz++);
+            }while ((DataEEprom != '@') && (iiz != 242));
+            iiz--;
+            if (iiz==241)
+               iiz=0;
+            NewDataLoc = NewDataLoc + iiz;
+            dataFinder = 0;
+            for (zzx=iiz;zzx<NewDataLoc;zzx++)
+               write_eeprom(zzx,data[dataFinder++]);
+            write_eeprom(zzx++,'*');
+            write_eeprom(zzx,'@');
+         }  
+         else
+            fprintf(PC,"Num in Memory\n");      
+         break;
+      case 2: //get from eeprom the time to send data 
+         newEEData(data,242);
+         break;
+      case 3: // gets the password
+         newEEData(data,245);
+         break;
+      case 4: // gets the server ip-add.
+         newEEData(data,257);
+         break;
+      case 5: // get number that initiate manual restart
+         newEEData(data,273);
+         break;
+      case 6: // get server number
+         newEEData(data,285);
+         break;
+      case 7: //store sensortype
+         newEEData(data,297);
+         break;
+      case 8: //power board config
+         newEEData(data,302);
+         break;
+//---------- 306 IS ALLOCATED FOR BOOTLOAD FLAG
+//---------- 307 IS DEPLOYMENT STATUS
+//---------- 308 IS SATELLITE OPTION         
+//---------- 309 PASSWORD CHECK         
+      case 9: //cmd for senslope
+         newEEData(data,310);
+         break;
+//-----------320 SERVERNUMBER CHECK         
+//-----------321 ARQCMD CHECK
+//-----------322 RAIN DYNAMIC STATUS
+   }
+}
+
+void readCharEE(unsigned int16 hbp, char & outChar)
+{
+   outChar = read_eeprom(hbp);
+   //fprintf(PC,"readCharEE__=%c\r",outChar);
+}
+
+void writeCharEE(char hbp, unsigned int16 addx)
+{
+   write_eeprom(addx,hbp);
+}
+
+void ReadEE(unsigned int16 basti,unsigned int16 hbp)
+{
+   unsigned int16 zzx=0;
+   char dataEepromx[15]={};
+   int iiz=0;   
+   
+   for(zzx=basti;zzx<=hbp;zzx++)
+   {
+      dataEepromx[iiz] = read_eeprom(zzx);
+      //fprintf(PC,"dataEepromx[iiz]=%c,counter=%li\n",dataEepromx[iiz],zzx);
+      if (dataEepromx[iiz]=='*')
+      {
+         dataEepromx[iiz]='\0';
+         strcpy(funcReturnVar,dataEepromx);
+         return;
+      }
+      iiz++;
+   }
+   // in case you cant find *, this would prevent data from overlapping to other variables
+   dataEepromx[iiz-1]='\0';
+   strcpy(funcReturnVar,dataEepromx);
+}
+
+/*
+int1 checkEEpromStatus (unsigned int16 bry)
+{
+   char idenChar;
+   
+   idenChar = read_eeprom(bry);
+   if (idenChar != 'v')
+      return FALSE; //no present value 
+   else
+      return TRUE; //with value
+}  
+*/
+
+void readDataEEprom(int hbp)
+{
+   switch(hbp)
+   {
+      case 2: //get from eeprom the time to send data 
+         ReadEE(242,244);
+         break;
+      case 3: // gets the password
+         ReadEE(245,256);
+         break;
+      case 4: // gets the server ip-add.
+         ReadEE(257,272);
+         break;
+      case 5: // get number that initiate manual restart
+         ReadEE(273,284);
+         break;
+      case 6: // get server number
+         ReadEE(285,296);
+         break;
+      case 7: //store sensortype
+         ReadEE(297,301);
+         break;
+      case 8: //power board config
+         ReadEE(302,304);
+         break;
+//---------- 306 IS ALLOCATED FOR BOOTLOAD FLAG
+//---------- 307 IS DEPLOYMENT STATUS
+//---------- 308 IS SATELLITE OPTION         
+//---------- 309 PASSWORD CHECK         
+      case 9: //cmd for senslope
+         ReadEE(310,319);
+         break;
+//-----------320 SERVERNUMBER CHECK         
+//-----------321 ARQCMD CHECK
+//-----------322 RAIN DYNAMIC STATUS
+ }
+//   note:
+//       funcReturnVar is returned here      
+}
+

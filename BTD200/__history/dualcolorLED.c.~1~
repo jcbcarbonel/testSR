@@ -1,0 +1,21 @@
+#define LED_STAT_B_RED PIN_H3
+#define LED_STAT_A_GREEN PIN_E1
+
+
+void green_led_a_on()
+{
+   output_high(LED_STAT_A_GREEN);
+   output_low(LED_STAT_B_RED);
+}
+
+void red_led_b_on()
+{
+   output_low(LED_STAT_A_GREEN);
+   output_high(LED_STAT_B_RED);
+}
+
+void both_led_off()
+{
+   output_low(LED_STAT_A_GREEN);
+   output_low(LED_STAT_B_RED);
+}

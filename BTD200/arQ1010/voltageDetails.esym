@@ -1,0 +1,9 @@
+D G "__PCH__" 0 9 ""5.091""
+D G "__DEVICE__" 0 9 ""
+D G "__DATE__" 0 9 ""17-Nov-22""
+D G "__TIME__" 0 9 ""13:51:16""
+D G "_UNICODE" 0 9 ""?""
+D G "__EVAL" 0 9 ""?""
+F N "checkPinStatus" 0 1 ""
+V L "pin" 0 1 "int16" `36 
+F G "checkPinStatus" 0 2 "int8(int16 pin)" `35 

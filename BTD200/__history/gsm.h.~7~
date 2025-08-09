@@ -1,0 +1,34 @@
+
+char SMS_RCV[BUFFER_SIZE] = {};
+char SMS_TOBE_SENT[BUFFER_SIZE]={};
+int OPTINDICATOR=0;
+int1 EXT_FLAG=0;
+
+char MSG_SENDER[20]={};
+char MSG_DATA[50]={};
+//char SENDING_MODE[6]={};
+
+void clear_inputs();
+void getGSM_Strength();
+void logger_health_status();
+void DelSMS(int msgNum);
+int Register2Network(void);
+int1 testGSM(void);
+void hangUpCall();
+void IgniteModule();
+void InitGSM(void);
+void ShutDownGSM();
+void gsnId();
+int1 SendSMS(char *Phone_Number);
+int1 AttemptToSend(); // attempt to send three times
+int processRcv(void);
+int ValidateNum(char *numberValidate);
+void SetGSMTime(char *clockSetting);
+short readSMS(int msgNum);
+void RealTime_acquire();
+void GsmManualCommands();
+void getModuleNumber();
+int1 gsmInquire(char *msgdata,int1 regAlready);
+void proc_receive();
+
+

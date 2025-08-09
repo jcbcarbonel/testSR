@@ -1,0 +1,236 @@
+
+//////////////////////////////// the AS3935 file ///////////////////////////////
+
+
+// register access macros - register address, bitmask [ NOT Currently using these ]
+#define AS3935_AFE_GB      0x00, 0x3E
+#define AS3935_PWD      0x00, 0x01
+#define AS3935_NF_LEV      0x01, 0x70
+#define AS3935_WDTH      0x01, 0x0F
+#define AS3935_CL_STAT      0x02, 0x40
+#define AS3935_MIN_NUM_LIGH   0x02, 0x30
+#define AS3935_SREJ      0x02, 0x0F
+#define AS3935_LCO_FDIV   0x03, 0xC0
+#define AS3935_MASK_DIST   0x03, 0x20
+#define AS3935_INT      0x03, 0x0F
+#define AS3935_DISTANCE   0x07, 0x3F
+#define AS3935_DISP_LCO   0x08, 0x80
+#define AS3935_DISP_SRCO   0x08, 0x40
+#define AS3935_DISP_TRCO   0x08, 0x20
+#define AS3935_TUN_CAP      0x08, 0x0F
+
+// other constants
+#define INDOOR 0x12
+#define OUTDOOR 0x0E
+ 
+
+unsigned int8 tmp1;
+//int32 tmp2;
+//int16 message_count = 0;
+//int16 Total_Lightings_Detected = 0;
+//int1 InterruptFlag = 0;
+//unsigned int8 buffer;
+unsigned int8 interrupt_source;
+//char i;
+
+//Func protos
+void Thunder_Init(void);
+void Thunder_Write(unsigned int8 address, unsigned int8 data1);
+unsigned int8 Thunder_Read(unsigned int8 address);
+int32 Thunder_Read_Energy(void);
+unsigned int16 Thunder_Read_distance(void);
+void ReadInternalData(void);
+
+
+
+/*******************************************************************************
+* Function Thunder_Init()
+*
+* These are the same functions from the PIC32 example from Mikroe which works fine
+* ------------------------------------------------------------------------------
+* Overview: Function Initializes Thunder chip
+* Input: register address, data
+* Output: Nothing
+*******************************************************************************/
+void Thunder_Init() {
+unsigned int8 temp;
+int i;
+int checker=0;
+ 
+  output_high(EN1);              // Set CS to idle
+
+  Thunder_Write(0x3C, 0x96);           // set all registers in default mode
+  delay_ms(3);
+  
+  Thunder_Write(0x3D, 0x96);           // calibrate internal oscillator
+  delay_ms(3);
+  
+//!  //CHecking of current configuration values.
+//!  for (i=0; i<=8;i++)
+//!   {temp = Thunder_Read(i);
+//!    fprintf(USB, "0x0%i: 0x%X\n", i, temp);
+//!    delay_ms(3);
+//!   
+//!   }
+  
+//!  temp = Thunder_Read(0x00) & 0xC1;
+//!  fprintf(USB, "Ox00 temp: 0x%X\n",temp);
+//!  delay_ms(3);
+  Thunder_Write(0x00, ((OUTDOOR  << 1) | temp)); // set to INDOOR or OUTDOOR
+  delay_ms(3);
+  
+//!  temp = Thunder_Read(0x01) & 0x80;
+//!  fprintf(USB, "Ox01 temp: 0x%X\n",temp);
+//!  delay_ms(3);
+  Thunder_Write(0x01, 0x22 | temp);    // set NFL and WDTreshold 0x44
+  delay_ms(3);
+  
+//!  temp = Thunder_Read(0x02) & 0x80;    // clear statistics, min number of ligtning, spike rejection
+//!  fprintf(USB, "Ox02 temp: 0x%X\n",temp);
+//!  delay_ms(3);
+  Thunder_Write(0x02, 0xC2); //set minimum number of lightning per interrupt.  0XC2 for for 1, 0XD2 for 5 
+  delay_ms(3);
+  
+//!  temp = Thunder_Read(0x03) & 0x1F;   // Frequency division ratio(antenna),mask disturber, interrupt
+//!  fprintf(USB, "Ox03 temp: 0x%X\n",temp);
+//!  delay_ms(3);
+  Thunder_Write(0x03, 0x00 | temp);
+  delay_ms(3);
+  
+  Thunder_Write(0x08, 0x00);           // LCO, SRCO, TRCO on IRQ, capacitors tuning
+  delay_ms(200);
+  
+  
+  //Checking of current configuration values.
+  for (i=0; i<=8;i++)
+   {temp = Thunder_Read(i);
+    switch(i)
+      {
+      case 0: 
+         if(temp==0x1C)
+            checker++;
+         break;
+      
+      case 1: 
+         if(temp==0x22)
+            checker++;
+         break;
+         
+      case 2: 
+         if(temp==0xC2)
+            checker++;
+         break;   
+      
+      case 7: 
+         if(temp==0x3F)
+            checker++;
+         break;
+         
+      default:
+         if(temp==0x00)
+            checker++;
+         break;
+      }  
+         
+    fprintf(USB, "0x0%i: 0x%X\n", i, temp);
+    delay_ms(3);
+   }
+   
+   fprintf(USB, "checker: %i\n", checker);
+   if (checker==9)
+      {fprintf(USB, "AS3935 Initiatized\n");}
+   else
+      {fprintf(USB, "AS3935 Error\n");}
+
+  
+
+}
+
+
+
+/*******************************************************************************
+* Function Thunder_Write(unsigned short address, unsigned short data1)
+* ------------------------------------------------------------------------------
+* Overview: Function writes desired byte into specified register address
+* Input: register address, byte
+* Output: Nothing
+*******************************************************************************/
+void Thunder_Write(unsigned int8 address, unsigned int8 data1)  {
+   
+  bit_clear(address,7);       // set both bits 6&7 to 0 to do a write                       
+  bit_clear(address,6); 
+  output_low(EN1);     
+  //delay_ms(10);
+  spi_xfer(address);         // spi_write(address);
+  spi_xfer(data1);          // spi_write(data1);
+ //delay_ms(10);
+  output_high(EN1);
+}
+
+
+
+
+
+/*******************************************************************************
+* Function Thunder_Read(unsigned short address)
+* ------------------------------------------------------------------------------
+* Overview: Function reads byte from specified address
+* Input: register address
+* Output: desired byte
+*******************************************************************************/
+unsigned int8 Thunder_Read(unsigned int8 address) {
+  unsigned int8 tmp = 0;
+ 
+ // fprintf(USB, "add: 0X%X\n", address);
+  bit_clear(address,7);      // set both bits 7 =0 and bit 6 = 1 to do a read 
+  bit_set(address,6);
+  
+  output_low(EN1);
+  spi_xfer(address);            //spi_write(address); 
+  tmp = spi_xfer(0);        // spi read data; 
+  //fprintf(USB, "tmp: 0X%X\n", tmp);
+  output_high(EN1);
+  return tmp;
+}
+
+
+
+/*******************************************************************************
+* Function Thunder_Read_Energy()
+* ------------------------------------------------------------------------------
+* Overview: Function reads energy of detected thunder
+* Input: Nothing
+* Output: Measured result
+*******************************************************************************/
+int32 Thunder_Read_Energy() {
+  unsigned int8 low_byte, mid_byte;
+  int32 Out_thunder_energy;
+ 
+  Out_thunder_energy = Thunder_Read(0x06) & 0x1F;
+  mid_byte = Thunder_Read(0x05);
+  low_byte = Thunder_Read(0x04);
+ 
+  Out_thunder_energy = (Out_thunder_energy << 8);
+  Out_thunder_energy = (Out_thunder_energy | mid_byte);
+  Out_thunder_energy = (Out_thunder_energy << 8);
+  Out_thunder_energy = (Out_thunder_energy | low_byte);
+ 
+  return Out_thunder_energy;
+}
+ 
+ 
+/*******************************************************************************
+* Function Thunder_Read_distance()
+* ------------------------------------------------------------------------------
+* Overview: Function reads distance from detected thunder
+* Input: Nothing
+* Output: Measured result
+*******************************************************************************/
+unsigned int16 Thunder_Read_distance() {
+  int16 Out_thunder_distance;
+ 
+  Out_thunder_distance = Thunder_Read(0x07) & 0x3F;
+  //fprintf(USB, "dist1: %lu\n", Out_thunder_distance);
+  
+  return Out_thunder_distance;
+}

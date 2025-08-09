@@ -1,0 +1,754 @@
+#use rs232(baud=9600, xmit=PIN_G4, rcv=PIN_G3, stream=IDP)// IDP
+
+void debugMenu()
+{
+   fprintf(PC,"\n    FIRMWARE VERSION: %s\n",FIRMWARE);
+   
+   fprintf(PC,"      DEBUG MODE MENU\n");
+   fprintf(PC,"      A.     Get data from the sensor\n");
+   fprintf(PC,"      B.     Get arQ's current configurations\n");
+   fprintf(PC,"      C.     Display DEBUG menu\n");
+   fprintf(PC,"      D.     Change sending time\n");
+   fprintf(PC,"      E.     Check satellite sending\n");
+   fprintf(PC,"      F.     Set server number\n");
+   fprintf(PC,"      G.     List registered numbers\n");
+   //fprintf(PC,"H.    Set IP address\n");
+   fprintf(PC,"      I.     Set date and time\n");
+   fprintf(PC,"      J.     Set power board configuration\n");
+   fprintf(PC,"      K.     VAISALA settings\n");
+   fprintf(PC,"      L.     Download data from flash memory\n");
+   fprintf(PC,"      M.     Change password\n");
+   fprintf(PC,"      N.     Enable satellite\n");
+   fprintf(PC,"      O.     Set the sensor type\n");
+//!   fprintf(PC,"P.    Rain gauge test\n");
+   fprintf(PC,"      Q.    Test Iridium satellite commands\n");
+   //fprintf(PC,"      R.     Set soil sensor (5TE) ID\n");
+   fprintf(PC,"      S.     Turn off watchdog\n");
+//!   fprintf(PC,"      T.     Check boost pin\n");
+//!   #ifdef DYNAMICRAIN
+//!   fprintf(PC,"U.    Set dynamic rain\n");
+//!   #endif
+//!   fprintf(PC,"V.    Change RMYOUNG ID\n");
+   fprintf(PC,"      W.     Exit DEBUG mode\n");
+   fprintf(PC,"      X.     Delete registered number\n");
+   //fprintf(PC,"Z.    Change SENSLOPE command\n");
+   fprintf(PC,"      a.     Register number\n");
+   //fprintf(PC,"      b.     Set GSM provider\n");
+   //fprintf(PC,"      c.     Manual GSM commads\n");
+   //fprintf(PC,"d.    IDP test\n");
+   delay_ms(10);
+}
+
+
+int1 debugDetails()
+{
+   int16 yy=0;
+   
+   int1 exit_=0;
+   char debugDataInquire[50]={};
+   char passwordx[15]={};
+   
+   char strx[20]={};
+   char spacex[2]=" ";
+   char temp[20]={}; 
+   
+   strcpy(funcReturnVar,"");
+   readDataEEprom(EEPROM_PASSWORD);
+   //strcpy(passwordx, funcReturnVar);
+   //strcpy(funcReturnVar,"thequic");
+   strcpy(passwordx,funcReturnVar);
+   fprintf(PC,"\nENTER CHOICE:\n");
+   
+   
+   getDataFromPC();
+   
+   switch(FROMSERIALPC[0])
+   {
+      case 'A': //SENSORPOLL <space> <PASSWORD>
+      {
+         sprintf(debugDataInquire,"SENSORPOLL %s",passwordx);
+         gsmInquire(debugDataInquire,1);
+         break;
+      }
+      case 'B': 
+      {         
+         fprintf(PC,"Loading arQ's current configurations...\n");
+         
+         logger_health_status();
+         fprintf(PC,"Health: %s\n",funcReturnVar);
+         
+         GetDateTime();
+         fprintf(PC,"Date,Time: %s\n",funcReturnVar);
+         
+         fprintf(PC,"Firmware: %s\n",FIRMWARE);
+         
+         readDataEEprom(EEPROM_SENDING_TIME);   //sending time
+         fprintf(PC,"Sending time: %s\n",funcReturnVar);
+         
+         fprintf(PC,"Server number: %s\n",SERVERNUMBER);
+         
+         fprintf(PC,"Sensor config: %s\n",SENSORCONFIG);
+         
+         fprintf(PC,"Power board: %s\n",PBOARDCONFIG);
+              
+         break;
+      }
+      case 'C': //DEBUG MENU
+      {
+         debugMenu();
+         break;
+      }
+      case 'D': //CHANGESENDTIME <space> <PASSWORD> <SENDING TIME>
+      {
+         fprintf(PC,"CURRENT SENDING TIME=%i\n",SENDING_TIME);
+         fprintf(PC,"press C to change\n");
+         getDataFromPC();
+         if (FROMSERIALPC[0] == 'C')
+         {
+            fprintf(PC,"ENTER NEW VALUE\n");
+            getDataFromPC();
+            delay_ms(10);
+            sprintf(debugDataInquire,"SENDINGTIME %s %s",passwordx,FROMSERIALPC);
+            gsmInquire(debugDataInquire,1);
+         }
+         break;
+      }
+      case 'E': //SATELLITE SENDING
+      {
+         if (SATELLITE_FLAG==1)
+         {
+            sensorPoll();
+            satelliteSend();
+         }
+         else
+            fprintf(PC,"Satellite not enabled\n");
+         break;
+      }
+      case 'F': //SERVER NUMBER -->QSERVER <space> <PASSWORD> <NUMBER>
+      {         
+         fprintf(PC,"CURRENT SERVER NUMBER=%s\n",SERVERNUMBER);
+         fprintf(PC,"press C to change\n");
+         getDataFromPC();
+         if (FROMSERIALPC[0] == 'C')
+         {
+            fprintf(PC,"ENTER NEW VALUE\n");
+            getDataFromPC();
+            delay_ms(10);
+            sprintf(debugDataInquire,"SERVERNUMBER %s %s",passwordx,FROMSERIALPC);
+            debugserverflag = 1;  //so that when the server number is changed in the debug mode, it will not send to the server number
+            gsmInquire(debugDataInquire,1);
+         }
+         break;
+      }
+      case 'G': //LIST <space> <PASSWORD>
+      {
+         sprintf(debugDataInquire,"LISTPHONENUM %s",passwordx);
+         gsmInquire(debugDataInquire,1);
+         break;
+      }
+      case 'H': //IPADD <space> <PASSWORD>
+      {
+         char packet_buffer[BUFFER_SIZE];   
+         int length;
+         debuginquirecrc = 1;
+         char datatoconvert[100];
+         
+         fprintf(PC,"press G to start\n");
+         getDataFromPC();  
+         if (FROMSERIALPC[0] == 'G')                         // if button pushed
+         {
+            sensorPoll();
+            strcpy(packet_buffer,REALDATA);
+//            strcpy(packet_buffer,"Hi+JAS");
+            length = strlen(packet_buffer);
+            fprintf(PC,"len: %u\n",length);
+            
+//!         for(int xx=0;xx<=7;xx++){
+//!         printf("%c",packet_buffer[xx]);}
+//!         printf("\n");
+//!         
+            crc_generator(packet_buffer, length); 
+            fprintf(PC,"CRC: %s",funcReturnVar);
+            debuginquirecrc = 0;
+         }
+         else if(FROMSERIALPC[0] == 'C'){
+            getDataFromPC(); 
+            delay_ms(10);
+            strcpy(packet_buffer,FROMSERIALPC);
+            fprintf();
+         }
+         break;
+      }
+      case 'I': //SET DATE AND TIME
+      {
+         GetDateTime();
+         fprintf(PC,"CURRENT DateTime=%s\n",funcReturnVar);
+         fprintf(PC,"press C to change\n");
+         getDataFromPC();
+         if (FROMSERIALPC[0] == 'C')
+         {
+            fprintf(PC,"Enter Date and Time (FORMAT \"YY/MM/DD,HH:MM:SS\")");
+            getDataFromPC();
+            sprintf(debugDataInquire,"DATETIME %s %s",passwordx,FROMSERIALPC);
+            gsmInquire(debugDataInquire,1);
+         }
+         break;
+      }
+      case 'J': //PBOARD CONFIG
+      {
+         //readDataEEprom(EEPROM_SERVER_IP);
+         //strcpy(strx,funcReturnVar); // get server ip
+         fprintf(PC,"PBOARDCONFIG = %s\n",PBOARDCONFIG);
+         fprintf(PC,"Press C to change\n");
+         getDataFromPC();
+         if (FROMSERIALPC[0] == 'C')
+         {
+            fprintf(PC,"ENTER NEW VALUE\n");
+            getDataFromPC();
+            delay_ms(10);
+            sprintf(debugDataInquire,"PBOARDCONFIG %s %s",passwordx,FROMSERIALPC);
+            gsmInquire(debugDataInquire,1);
+         }   
+         break;
+      }
+      case 'K': //vaisala settings
+      {
+         #ifdef __VAISALA_LIB
+            int1 vaisalaSetx=1;
+            while(vaisalaSetx == 1)
+            {
+               fprintf(PC,"Enter Vaisala Command \n");
+               fprintf(PC,"type EXIT to quit vaisala settings\n");
+               getDataFromPC();
+               fprintf(PC,"Command Sent: %s\n",FROMSERIALPC);
+               delay_ms(70);
+               if (strcmp(FROMSERIALPC,"EXIT")==0)
+               {
+                  vaisalaSetx=0;
+                  break;
+               }
+               Get_Data_Vai(FROMSERIALPC);
+               fprintf(PC,"Vaisala Reply: %s\n",REALDATA);
+            }
+         #endif            
+         break;
+      }
+      case 'L': // download flash memory data
+      {
+         int16 startpage_=0;
+         int16 endpage_=0;
+         
+         fprintf(PC,"Enter page start\n");
+         getDataFromPC();
+         startpage_ = atol(FROMSERIALPC);
+         fprintf(PC,"Enter page end\n");
+         getDataFromPC();
+         endpage_ = atol(FROMSERIALPC);
+         
+         if (endpage_ < startpage_)
+         {
+            for (yy=startpage_;yy<=DTFNbrPage;yy++)
+            {
+               fprintf(PC,"\npage=%ld\n",yy);
+               DTFReadFromPage(yy,1);
+            }
+            startpage_=0;
+         }
+         
+         for (yy=startpage_;yy<=endpage_;yy++)
+         {
+            fprintf(PC,"\npage=%ld\n",yy);
+            DTFReadFromPage(yy,1);
+         }
+         break;
+      }
+      
+      case 'M':
+      {
+         fprintf(PC,"CURRENT PASSWORD=%s\n",passwordx);
+         fprintf(PC,"press C to change\n");
+         getDataFromPC();
+         if (FROMSERIALPC[0] == 'C')
+         {
+            fprintf(PC,"ENTER NEW VALUE\n");
+            getDataFromPC();
+            sprintf(debugDataInquire,"PASSWORD %s %s",passwordx,FROMSERIALPC);
+            debugpsswrdflag = 1;
+            gsmInquire(debugDataInquire,1);
+         }
+         break;
+      }     
+      case 'N':
+      {
+         fprintf(PC,"SAT ENABLE=%i\n",SATELLITE_FLAG);
+         fprintf(PC,"press C to change\n");
+         getDataFromPC();
+         if (FROMSERIALPC[0] == 'C')
+         {
+            fprintf(PC,"ENTER NEW VALUE\n");
+            getDataFromPC();
+            sprintf(debugDataInquire,"SATENABLE %s %s",passwordx,FROMSERIALPC);
+            gsmInquire(debugDataInquire,1);
+         }
+         break;
+      }
+      case 'O': // select type of sensor
+      {
+         //fprintf(PC,"Press (W) for AWS,(R) for RG,(L) for WL,(P) for RG with pressure,(N) for NORAD,(A) for AIO,(D) for Davies,(B) for BSWM,(F) for LUFFT, V for AWS with 10 mtrs\n");
+         fprintf(PC,"CURRENT CONFIG = %s\n",SENSORCONFIG);
+         //fprintf(PC,"Refer to documentation\n");
+         fprintf(PC,"Press C to change\n");
+         getDataFromPC();
+         if (FROMSERIALPC[0] == 'C')
+         {
+     xtype: fprintf(PC,"ENTER NEW VALUE\n");
+            getDataFromPC();
+            delay_ms(10);
+            sprintf(debugDataInquire,"SENSORCONFIG %s %s",passwordx,FROMSERIALPC);
+            if((!stricmp(FROMSERIALPC,"WL")) || (!stricmp(FROMSERIALPC,"RG")) || (!stricmp(FROMSERIALPC,"TM")) || (!stricmp(FROMSERIALPC,"RDR")) || (!stricmp(FROMSERIALPC,"RDRR"))){
+               debugconfigflag = 1;
+               gsmInquire(debugDataInquire,1);
+            }
+            else{
+               fprintf(PC,"\nINVALID SENSOR TYPE. For reference these are the supported sensor types:\n");
+               fprintf(PC,"WL-Waterlevel, RG-Rain Gauge, TM-Tandem, RDR-Radar, RDRR-Radar with pressure\n\n");
+               goto xtype;
+            }
+         }            
+         break;
+      }
+      
+//!      case 'P': // test rain guage
+//!      {
+//!         //if ((SENSORTYPE == 'R') || (SENSORTYPE == 'N'))
+//!         //{
+//!            RAINCOUNT_TIPPING = 0;
+//!            fprintf(PC,"PRESS 'R' to read the number of tips\n");
+//!            getDataFromPC();
+//!            if (FROMSERIALPC[0] == 'R')
+//!            {
+//!              getRainCount_TIPPING();
+//!              fprintf(PC,"no. of tips: %s\n",funcReturnVar);
+//!            }
+//!            else
+//!               fprintf(PC,"INVALID COMMAND\n");
+//!            RAINCOUNT_TIPPING = 0;
+//!         break;
+//!      }
+      
+      case 'Q': 
+      {
+         if (SATELLITE_FLAG==1)
+         {
+            ShutDownGSM();
+            SatelliteManualCommands();
+            InitGSM();
+         }
+         else
+            fprintf(PC,"Satellite not enabled\n");
+         break;
+      }
+      
+//!      case 'R': // set soil moisture id
+//!      {            
+//!         delay_ms(1000);   
+//!         strcpy(debugDataInquire,"?!");
+//!         sdi12B_process(debugDataInquire);
+//!         fprintf(PC,"current ID: %s\n",funcReturnVar);
+//!         fprintf(PC,"Enter command: [prev]A[new]!\n");
+//!         getDataFromPC();
+//!         delay_ms(10);
+//!         strcpy(debugDataInquire,FROMSERIALPC);
+//!         sdi12B_process(debugDataInquire);
+//!         fprintf(PC,"soilMoisture reply: %s\n",funcReturnVar);
+//!         
+//!         break;
+//!      }
+      
+      case 'S': // turn off watch dog
+      {
+         setup_wdt(WDT_OFF);
+         fprintf(PC,"WATCH DOG TURNED OFF\n");
+         break;
+      }
+      
+//!      case 'T': //check boost pin
+//!      {
+//!         powerBoostConfig(1);
+//!         while(1)
+//!         {
+//!            fprintf(PC,"Enter SDI Command\n");
+//!            fprintf(PC,"type EXIT to quit\n");
+//!            getDataFromPC();
+//!            fprintf(PC,"Command Sent: %s\n",FROMSERIALPC);
+//!            delay_ms(10);
+//!            if (strcmp(FROMSERIALPC,"EXIT")==0)
+//!               break;
+//!            sdi12A_process(FROMSERIALPC);
+//!            fprintf(PC,"SDI reply: %s\n",funcReturnVar);
+//!         }
+//!         powerBoostConfig(0);
+//!   
+//!         break;
+//!      }
+      
+//!      case 'U': //get pressure sensor readings
+//!      {
+//!         /*char add;
+//!         add = '2';
+//!         //getPressureReadings();
+//!         //fprintf(PC,"temp+pressure: %s\n",funcReturnVar);
+//!         powerBoostConfig(1);
+//!         getSoilmoistureData(add);
+//!         powerBoostConfig(0);
+//!         */
+//!         #ifdef DYNAMICRAIN
+//!            fprintf(PC,"dynamicSENDING=%i\n",dynamicSENDING);
+//!            fprintf(PC,"press C to change\n");
+//!            getDataFromPC();
+//!            if (FROMSERIALPC[0] == 'C')
+//!            {
+//!               fprintf(PC,"ENTER NEW VALUE\n");
+//!               getDataFromPC();
+//!               sprintf(debugDataInquire,"DYNAMICSEND %s %s",passwordx,FROMSERIALPC);
+//!               gsmInquire(debugDataInquire,1);
+//!            }
+//!         break;
+//!         #endif
+//!         break;
+//!      }
+      
+//!      case 'V': //
+//!      {
+//!         #ifdef PAGASA
+//!            fprintf(PC,"make sure only rm young is connected and press enter\n");
+//!            getDataFromPC();
+//!            ChangeIDRMYoung9101();
+//!         #endif            
+//!         break;
+//!      }
+      
+      case 'W'://exit
+      {
+         fprintf(PC,"For Deploy? (Y)es or N(o)\n");
+         getDataFromPC();
+         if (FROMSERIALPC[0] == 'Y')
+         {
+            writeCharEE('Y',EEPROM_DEPLOY_STATUS);
+            fprintf(PC,"Deployment mode activated...\n");
+         }            
+         else
+            writeCharEE('N',EEPROM_DEPLOY_STATUS);
+         
+         clear_buffer();
+         EXT_FLAG=0;
+         setup_wdt(WDT_ON);
+         exit_=1;
+         clearRainCumVars();
+         fprintf(PC,"EXIT DEBUG MODE\n");
+         break;
+      }
+      
+      case 'X'://get data from flash
+      {
+//!         fprintf(PC,"Enter date startpage endpage to search\n");
+//!         getDataFromPC();
+//!         if (strlen(FROMSERIALPC) != 0)
+//!         {
+//!            strcpy(debugDataInquire,"ACQUIRE ");
+//!            strcat(debugDataInquire,passwordx);
+//!            strcat(debugDataInquire,spacex);
+//!            strcat(debugDataInquire,FROMSERIALPC);
+//!            gsmInquire(debugDataInquire,1);
+//!         }
+
+         fprintf(PC,"ENTER NUMBER\n");
+         getDataFromPC();
+         delay_ms(10);
+         strcpy(MSG_SENDER,FROMSERIALPC);
+         sprintf(debugDataInquire,"DELETE %s %s",passwordx,MSG_SENDER);
+         gsmInquire(debugDataInquire,1);
+         break;
+      }
+      
+      
+      
+      case 'Z': //change senslope command
+      {
+         fprintf(PC,"Do you want to restore the settings?\n");
+         fprintf(PC,"Press 'Y' for Yes and 'N' for No\n");
+         getDataFromPC();
+         if (FROMSERIALPC[0] == 'Y')
+         {
+            sprintf(debugDataInquire,"RESTORE %s",passwordx);
+            gsmInquire(debugDataInquire,1);
+            break;
+         }
+         else if(FROMSERIALPC[0] == 'N'){
+            break;
+         }
+         else break;
+         break;
+      }
+      case 'a': 
+      {
+         fprintf(PC,"ENTER NEW NUMBER\n");
+         getDataFromPC();
+         delay_ms(10);
+         strcpy(MSG_SENDER,FROMSERIALPC);
+         sprintf(debugDataInquire,"REGISTER %s",passwordx);
+         gsmInquire(debugDataInquire,0);
+         break;
+      }
+      case 'y':
+      {
+         strcpy(temp,"0");
+         writeCharEE(temp[0],EEPROM_TWOSERVERS);
+         twoservers = atoi(temp);
+         sprintf(SMS_TOBE_SENT,"ASTISERVER - %i",twoservers);
+         fprintf(PC,"%i\n",twoservers);
+         strcpy(ASTISERVERNUM,NULL);
+         fprintf(PC,"ASTI Server number=%s\n",ASTISERVERNUM);
+         break;
+      }
+      case 'z': //ASTISERVER
+      {
+         fprintf(PC,"CURRENT ASTISERVERNUM =%s\n",ASTISERVERNUM);
+         fprintf(PC,"press C to change\n");
+         getDataFromPC();
+         if (FROMSERIALPC[0] == 'C')
+         {
+            fprintf(PC,"ENTER NEW VALUE\n");
+            getDataFromPC();
+            delay_ms(10);
+            sprintf(debugDataInquire,"ASTISERVERNUM %s %s",passwordx,FROMSERIALPC);
+            gsmInquire(debugDataInquire,1);
+         }
+         //add for the twoservers
+         strcpy(temp,"1");
+         writeCharEE(temp[0],EEPROM_TWOSERVERS);
+         twoservers = atoi(temp);
+         //sprintf(SMS_TOBE_SENT,"ASTISERVER - %i",twoservers);
+         //fprintf(PC,"%i\n",twoservers);
+         break;   
+      }
+      
+//!      case 'b': //SET GSM PROVIDER 
+//!      {
+//!         fprintf(PC,"ENTER 0 - SMART,1 - GLOBE\n");
+//!         getDataFromPC();
+//!         sprintf(debugDataInquire,"GSM_OPT %s %s",passwordx,FROMSERIALPC);
+//!         gsmInquire(debugDataInquire,1);
+//!         break;
+//!      }
+      
+//!      case 'c': // manual GSM commands
+//!      {
+//!         GsmManualCommands();
+//!         //fprintf(PC, "150 ms=start\n");
+//!         //delay_ms(150);
+//!         //fprintf(PC, "150 ms=end\n");
+//!         break;
+//!      }     
+      
+//!      case 'x': //add manual flash data
+//!      {
+//!         for (yy=0;yy<=40;yy++)
+//!         {
+//!            strcpy(debugDataInquire,"data_in_here+");
+//!            GetDateTime();
+//!            strcpy(strx,funcReturnVar);
+//!            strcat(debugDataInquire,strx);
+//!            fprintf(PC,"msg=%s\n",debugDataInquire);
+//!            DTFWriteToFlash(debugDataInquire,strlen(debugDataInquire),0);
+//!            SEC=SEC+15;
+//!         }
+//!         break;
+//!      }
+//!      case 'z':
+//!      {
+//!         /*
+//!         getLufftSDIData("0M1!",0);
+//!         fprintf(PC,"data=%s\n",funcReturnVar);
+//!         //tempData();
+//!         //satelliteSend();
+//!         */
+//!         break;
+//!      }
+/*      
+      case 'a': //satellite command
+      {
+
+         #ifdef SATELLITE
+            ShutDownGSM();
+            fprintf(PC,"shutdown\n");
+            delay_ms(5000);
+            output_high(PIN_SAT_ON);
+            fprintf(PC,"sat_on\n");
+            satEchoOff();
+            fprintf(PC,"echoOff\n");
+         #endif
+         */
+         //closeCon();
+         //InitICP(0);
+         //output_high(PIN_SAT_ON);
+//         break;
+//      }
+      
+//!      case '=':
+//!      {
+//!        
+//!         /*
+//!         getLufftSDIData("0M4!",1);
+//!         fprintf(PC,"lufft=%s\n",funcReturnVar);
+//!         getWINDdata();
+//!         //output_low(PIN_SAT_ON);
+//!         /*
+//!         output_high(PIN_SAT_ON);
+//!         satEchoOff(); 
+//!         strcpy(REALDATA,"");
+//!         satProcess();
+//!         delay_ms(200);
+//!         */
+//!         //rcvMsgGPRSftp();
+//!         //rcvMsgGPRS(0);
+//!         break;
+//!      }
+//!      
+//!      case 'l':
+//!      {
+//!         /*
+//!         fprintf(PC,"Enter command:\n");
+//!         getDataFromPC();
+//!         delay_ms(10);
+//!         strcpy(debugDataInquire,FROMSERIALPC);
+//!         sdi12A_process_lufft(debugDataInquire);
+//!         fprintf(PC,"sdi12A_process_lufft reply: %s\n",funcReturnVar);
+//!         */
+//!         /*
+//!         output_high(PIN_SAT_ON);
+//!         satEchoOff();
+//!         satIniforSend();
+//!         satSendData();
+//!         delay_ms(200);
+//!         */
+//!         //openConGprs();
+//!         break;
+//!      }
+      
+//!      case '.':
+//!      {
+//!         //satEchoOff();
+//!         //satIniforSend();
+//!         //readSatMsg();  
+//!         
+//!         //output_high(PIN_SAT_ON);
+//!         //satEchoOff();
+//!         //satIniforSend();
+//!         //readSatMsg();
+//!         
+//!         //gprsRCVcnt=0;
+//!         //gprsRoutine();
+//!         //closeCon();
+//!         break;
+//!      }
+      
+//!      case 'f':
+//!      {
+//!         output_low(PIN_A2);
+//!         ShutDownGSM();
+//!         break;
+//!      }
+//!      case 'g':
+//!      {
+//!         sampCopy();
+//!         break;
+//!      }
+//!      case 'h':
+//!      {
+//!         fprintf(PC,"DTFPageCnt=%li, DTFByteCnt=%li\n",DTFPageCnt,DTFByteCnt);
+//!         break;
+//!      }
+//!      case 'i':
+//!      {
+//!         checkGPRSstatus();
+//!         break;
+//!      }
+      default:
+         fprintf(PC,"Please choose another letter from the DEBUG menu\n");
+         break;
+      
+   }
+   return exit_;
+}
+
+void testDTR()
+{
+   int x;
+   int y=0;
+   if (DEBUGMODE != IN_DEBUG_MENU)
+   {
+      if (input(pin_USB_STAT))
+      {
+         for (x=0;x<=60;x++)
+         {
+            if (input(pin_USB_STAT)) 
+               y++;
+            else
+               return;
+            delay_ms(25);
+         }
+      }
+      if (y >= 50)
+         DEBUGMODE = USB_DETECTED;
+      else
+         DEBUGMODE = NO_USB;
+   }
+}
+
+/*
+int1 waitForPress()
+{
+   int16 ix = 0;
+   int16 zz = 0;
+   
+   delay_ms(50);
+   fprintf(PC,"Press A to Enter Debug Mode\n");
+   delay_ms(50);
+   while(ix < 50000)
+   {
+      ix++;
+      delay_us(100);
+      zz = 0;
+      if (kbhit(PC))
+      {
+         
+         //while((!kbhit(PC)) && (zz++ < 20000))
+         //{
+         //   output_low(STAT_PIN);
+         //}
+         //if (zz > 20000)
+         //   return 0;
+         //
+         getDataFromPC();
+         //getHexFromDebug();
+         output_high(STAT_PIN);
+         if (FROMSERIALPC[0] == 'A')
+         {
+            return 1;
+         }
+         else if (FROMSERIALPC[0] == CONNECT)
+         {
+            fprintf(PC,"%c",CONNECT);    // for VB Debug Menu
+            delay_ms(2000);
+            astiConfigToolInterface();
+            return 0;
+         }
+      }
+   }
+   fprintf(PC,"Exiting\n");
+   
+   return 0;
+   
+}
+*/

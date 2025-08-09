@@ -1,0 +1,66 @@
+
+int1 dataPresent_gps()
+{
+   int16 timeOut=0;
+   
+   while(!kbhit(GPS)&&++timeOut<50000)
+   { delay_us(50); }
+   if(!kbhit(GPS))
+      return 0;
+   else
+      return 1;
+}
+
+void extractDataGPS()
+{
+   int1 dp=0;
+   char cx[85]={};
+   char chx;
+   int retry = 0;
+
+retry_:  
+   int i=0;
+   int x=0;
+   
+   fprintf(PC,"acquiring gps data...\n");
+   strcpy(funcReturnVar,"");
+   if (retry > 4)
+   {
+      strcpy(funcReturnVar,"gps_err");
+      fprintf(PC,"\nGPSDATA=%s\n",funcReturnVar);
+      return;
+   }      
+   delay_ms(500);
+   fprintf(GPS,"$EIGPQ,RMC*3A\r\n");
+   while(x<85)
+   {
+      dp = dataPresent_gps();
+      if (dp == 1)
+      {         
+         chx = fgetc(GPS);
+         if ((chx == 0x0D) && (i>5))
+         {
+            fprintf(PC,"in here\n");
+            cx[i]='\0';
+            strcpy(funcReturnVar,cx);
+            break;
+         }  
+         else
+         {
+            cx[i]=chx;
+            i++;               
+         }
+         x++;
+      }
+      else
+      {
+         delay_ms(1);
+         retry++;
+         goto retry_;
+      }
+   }
+   fprintf(PC,"\nGPSDATA=%s\n",funcReturnVar);
+}
+
+
+

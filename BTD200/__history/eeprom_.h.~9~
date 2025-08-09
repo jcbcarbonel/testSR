@@ -1,0 +1,42 @@
+//---------- 345 IS ALLOCATED FOR BOOTLOAD FLAG
+//---------- 351 IS DEPLOYMENT STATUS
+
+//---------- 306 IS ALLOCATED FOR BOOTLOAD FLAG
+//---------- 308 IS DEPLOYMENT STATUS
+
+#define EEPROM_BOOTLOAD_FLAG      306
+#define EEPROM_DEPLOY_STATUS      306
+
+
+case 2: //get from eeprom the time to send data 
+      ReadEE(242,244);
+      break;
+   case 3: // gets the password
+      ReadEE(245,255);
+      break;
+   case 4: // gets the server ip-add.
+      ReadEE(257,272);
+      break;
+   case 5: // get number that initiate manual restart
+      ReadEE(273,284);
+      break;
+   case 6: // get server number
+      ReadEE(285,296);
+      break;
+   case 7: //store sensortype
+      ReadEE(297,301);
+      break;
+   case 8: //power board config
+      ReadEE(302,304);
+      break;
+
+void DelEepromPhoneNum();
+void DelOneNum(char *num1);
+void listPhNum(int hbp);
+void newEEData(char *eedata, unsigned int16 hbp);
+void AddDataEEprom(char *data,int hbp);
+void readCharEE(unsigned int16 hbp, char & outChar);
+void writeCharEE(char hbp, unsigned int16 addx);
+void ReadEE(unsigned int16 basti,unsigned int16 hbp);
+int1 checkEEpromStatus (unsigned int16 bry);
+void readDataEEprom(int hbp);

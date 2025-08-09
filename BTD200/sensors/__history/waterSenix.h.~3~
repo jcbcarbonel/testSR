@@ -1,0 +1,11 @@
+#use rs232(baud=4800, xmit=PIN_G4, rcv=PIN_G3, stream=SNSR_WATER)// water level
+
+#define __WATERSENIX_LIB
+
+float temp2Distance[20] = {};
+int sampleCounter=0;
+
+void sortWaterData();
+float computeDistanceX();
+void getDistance();
+void getRadarData();

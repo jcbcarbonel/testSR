@@ -1,0 +1,528 @@
+
+char *getNetworkOperator()
+   {
+   char *temp=NULL;
+   char SMART = "SMART";
+   char TalkNText = "TalkNText";
+   char GLOBE = "Globe Telecom-PH";
+   
+   clear_InterruptGSM();
+   strcpy(DESIRED_RESPONSE, "+COPS:");
+   strcpy(TOKEN,"\"");
+   fprintf(GSM,"AT+COPS?\r");
+   strtok(GetResponse(),TOKEN);
+   temp=strtok(0,TOKEN);
+   //fprintf(USB,"cops = %s\n",temp);
+   if ((strcmp(temp,SMART)==0) || (strcmp(temp,TalkNText)==0))
+   {  NETWORK=0;
+      //fprintf(USB, "SMART Network\n");
+   }
+   else if(strcmp(temp,GLOBE)==0)
+   {  NETWORK=1;
+      //fprintf(USB, "GLOBE Network\n");
+   }
+   else 
+   {  
+      NETWORK=2;
+      //fprintf(USB,"%s\n",temp);
+   }
+   
+   //fprintf(USB,"Network: %s\n", temp);
+   return temp;
+   }
+   
+   
+char rxSMS()
+{ char *temp=NULL;
+       //This command controls the SIM connection presentation mode and queries the connection status of the SIM and the card holder tray of the MC55i.
+   clear_InterruptGSM();
+   
+   //fprintf(USB, "RXDx: %s\n",InterruptGSM_Rxd);
+   //strcpy(TOKEN, "");
+   
+   
+
+   fprintf(GSM, "AT+CMGR=4\r");
+   delay_ms(100);
+   fprintf(USB, "Rxd: %s\n",InterruptGSM_Rxd);
+   
+    char * delim = "*";       
+    unsigned count = 0;       
+    char * inData = strtok(InterruptGSM_Rxd, delim);       
+    count++;   
+    char trunD;
+        
+    while (inData != NULL) 
+    {
+        printf("Token no. %d : %s \n", count, inData);
+        if (count == 2)
+        {   
+           // scanf("%s", inData);
+            fprintf(USB, "inData: %s\n", inData);
+            sprintf(char trunD, inData);
+            if (!strcmp(trunD, "shutdown"))
+             {
+               fprintf(USB, "Biral Shutdown!\n");
+             }
+        }
+        inData = strtok(NULL, delim);           
+        count++;       
+    }
+    
+}
+
+int checkNetworkRegistration(void)//serves to verify the network registration status
+{
+   //int counter = 0;
+   //int1 status=FALSE;
+   char *temp=NULL;
+   
+   clear_InterruptGSM();
+   strcpy(DESIRED_RESPONSE, "+CREG: ");
+   strcpy(TOKEN, "\r\n");
+   fprintf(GSM, "AT+CREG?\r");
+   delay_ms(100);
+   //fprintf(USB, "RXD: %s\n",InterruptGSM_Rxd);
+   temp = strtok(GetResponse(), TOKEN);
+   //fprintf(USB, "Network: %s\n",temp);
+   
+   if (temp[2] == '1')
+      {
+      //fprintf(USB, "Network Registration Successful\n");
+      return TRUE;
+      }
+   else
+      {
+      //fprintf(USB, "Network Registration Failed\n");
+      return FALSE;
+      }
+}
+
+
+
+
+
+int1 testGSM(void)
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_InterruptGSM();
+   delay_ms(200);
+   fprintf(GSM, "AT\r");
+   
+   if(GetResponse())
+      {
+      //fprintf(USB,"Active %s\n",FIRMWARE_desc);
+      fprintf(USB,"GSM module active\n");
+      return TRUE;
+      }
+   else
+      {
+      fprintf(USB,"GSM module no response\n");
+      return FALSE;
+      }
+}
+
+void igniteGSM()
+{
+   //int cnt = 0;
+   
+   fprintf(USB,"Ignite GSM module\n");
+   output_low(IGT);
+   delay_ms(10);
+   output_high(IGT);
+   delay_ms(110);
+   output_low(IGT);
+   delay_ms(1000);
+   
+   
+//!   {  fprintf(USB,"GSM Ignite Try: %i\n",cnt+1);
+//!      delay_ms(100);
+//!      cnt++;
+//!   } while(!testGSM() && (cnt < 5));
+}
+
+void ShutDownGSM()
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_InterruptGSM();
+   delay_ms(200);
+   fprintf(GSM,"AT^SMSO\r");
+   if(GetResponse())
+      fprintf(USB,"GSM Module Shutdown\n");
+}
+
+
+void InitGSM(void)
+{  int timeOut=0;
+   //char *temp=NULL;
+   
+   clear_InterruptGSM();
+   fprintf(USB,"Initialize GSM Module\n");
+
+
+   retry:
+      timeOut=0;
+      
+      igniteGSM();
+      delay_ms(2000);
+      
+      if (testGSM())
+         {fprintf(USB,"Checking network registration, please wait\n");
+          while(timeOut<20)
+              {if (checkNetworkRegistration())
+                  {
+                   fprintf(USB,"Registered to network: %s\n",getNetworkOperator()); // register ME to network
+                    
+                   break;
+                  }
+              
+                else
+                  {
+                   delay_ms(1000);
+                   timeOut++;
+                  }
+               }
+               
+               if (timeOut==20)
+                  {fprintf(USB,"Network registration failed\n");
+                   fprintf(USB,"Performing GSM module reboot\n");
+                   shutDownGSM();
+                   delay_ms(2000);
+                   goto retry;
+                  }
+          
+         }
+      else
+         {
+          goto retry;
+         }
+
+      strcpy(DESIRED_RESPONSE, "OK");
+      
+      port_b_pullups(00000010);
+      //fprintf(USB,"Pull up on PORT B\n");
+      //fprintf(GSM,"AT+CFUN=1,1\r");
+      //if (GetResponse())
+     //    fprintf(USB,"ME reset\n");
+      fprintf(GSM, "AT&F0\r"); // set to factory settings
+      if(GetResponse())
+         //fprintf(USB,"Factory settings\n");
+
+      fprintf(GSM, "ATE0\r"); // set echo to off
+      if(GetResponse())
+         //fprintf(USB,"Echo off\n");
+         
+      fprintf(GSM, "AT^SSYNC=1\r");      // activate LED
+      if(GetResponse())
+         //fprintf(USB,"LED active\n");
+       
+      fprintf(GSM, "AT+CNMI=1,1,0,0,1\r"); // sms indications set
+      if(GetResponse())
+         //fprintf(USB,"SMS indications set\n");
+      
+      fprintf(GSM, "AT+CMGF=1\r"); // set to text mode
+      if(GetResponse())
+         //fprintf(USB,"Set text mode\n");
+      
+      fprintf(GSM, "AT+CSMS=0\r");
+      if(GetResponse())
+         //fprintf(USB,"Msg service selected\n");
+      
+      fprintf(GSM, "AT+CLIP=1\r"); // display number of calling party
+      if(GetResponse())
+         //fprintf(USB,"CLIP enabled\n");
+      
+      fprintf(GSM, "AT+CPBS=ON\r"); // select GSM memory as storage phonebook
+      if(GetResponse())
+         //fprintf(USB,"PhonebookReady\n");
+      
+      fprintf(GSM, "AT+CPMS=MT,MT,MT\r");
+      if (GetResponse())
+         //fprintf(USB,"StorageReady\n");
+        
+//!      fprintf(GSM, "AT+CNMI=2,2,0,0,0\r"); //command to received live message
+//!      if (GetResponse())
+//!      
+
+   fprintf(USB,"GSM ready\n");
+}
+
+void clear_inputs()
+{
+   int ii=0;
+    //fprintf(USB, "Kahit ano\n");
+   for(ii=0;ii<40;ii++)
+   {
+      fprintf(GSM, "AT+CMGD=%i\r", ii);
+      delay_ms(100);
+      }   
+}
+
+int1 SendSMS(char *msg, char *number)
+   {char dq = 0x22; // 0x22 is double quote (") character  
+   // int1 status = FALSE;
+   //int1 statx=FALSE;
+   int counter = 0;
+   //int loopCount=0;
+    
+    strcpy(DESIRED_RESPONSE, "> ");
+    clear_InterruptGSM();
+    //delay_ms(200);
+    fprintf(GSM, "AT+CMGS=%c%s%c,129\r", dq,number,dq);
+    
+    //fprintf(USB, "AT+CMGS=%c%s%c,129\r\n", dq,Phone_Number,dq);
+    
+    do 
+      {
+      if (InterruptGSM_Flag) //checks if there is new data in the GSM serial line
+         {//fprintf(USB, "RXD1: %s\n",InterruptGSM_Rxd);
+    
+            if (GetResponse()) //check if "> " is received in the GSM serial line
+               {
+               counter = 0;
+               clear_InterruptGSM();
+               //delay_ms(100);
+               strcpy(DESIRED_RESPONSE, "OK");
+               fprintf(GSM, "%s\r", msg);
+               //fprintf(USB, "%s\n", SMS_TOBE_SENT);
+               fputc(0x1A, GSM); // 0x0A is ctrl-z to terminate message and start sending
+               
+               do
+               {  //fprintf(USB, "Counter: %i\n",counter);
+                  if (InterruptGSM_Flag)
+                  {//fprintf(USB, "RXD2: %s\n",InterruptGSM_Rxd);
+                     if (GetResponse())
+                     {
+                        fprintf(USB, "Message sent to: %s\n",number);
+                        return 1;
+                        //break;
+                     }
+                     else
+                        {
+                        fprintf(USB, "GSM error 2: Message NOT sent.\n"); //Returns ERROR -> No / low GSM signal causes SMS sending failure
+                        InterruptGSM_Flag=0;
+                        return 0;
+                        }
+                  }
+                  
+//!                  else
+//!                     {
+//!                     fprintf(USB, "Waiting for GSM response %i.\n",counter);
+//!                     }  
+                    delay_ms(100);     
+               } while(counter++ < 200);
+               
+               fprintf(USB, "GSM Timeout 2: Message NOT sent.\n");
+               return 0;
+               
+               }
+            else
+               {
+//!               InterruptGSM_Flag=0; //resetting the flag to 0
+               fprintf(USB, "GSM error 1:  Message NOT sent.\n");
+               return 0;
+               }
+         }
+//!      else
+//!         {
+//!         fprintf(USB, "Waiting for GSM response %i.\n",counter);
+//!         }
+       
+        
+       delay_ms(100);
+      } while(counter++ < 50); //total waiting time of 5 seconds
+   
+   fprintf(USB, "GSM Timeout 1: Message NOT sent.\n");
+   return 0;
+   }// end SendSMS()
+
+/*
+int1 SendSMS(char *Phone_Number)
+   {char dq = 0x22; // 0x22 is double quote (") character  
+   // int1 status = FALSE;
+   //int1 statx=FALSE;
+   int counter = 0;
+   //int loopCount=0;
+    
+    strcpy(DESIRED_RESPONSE, "> ");
+    clear_InterruptGSM();
+    delay_ms(200);
+    fprintf(GSM, "AT+CMGS=%c%s%c,129\r", dq,Phone_Number,dq);
+    //fprintf(USB, "AT+CMGS=%c%s%c,129\r\n", dq,Phone_Number,dq);
+    
+    do 
+      {
+      if (InterruptGSM_Flag) //checks if there is new data in the GSM serial line
+         {//fprintf(USB, "RXD1: %s\n",InterruptGSM_Rxd);
+    
+            if (GetResponse()) //check if "> " is received in the GSM serial line
+               {
+               counter = 0;
+               clear_InterruptGSM();
+               delay_ms(100);
+               strcpy(DESIRED_RESPONSE, "OK");
+               fprintf(GSM, "%s\r", SMS_TOBE_SENT);
+               //fprintf(USB, "%s\n", SMS_TOBE_SENT);
+               fputc(0x1A, GSM); // 0x0A is ctrl-z to terminate message and start sending
+               
+               do
+               {  //fprintf(USB, "Counter: %i\n",counter);
+                  if (InterruptGSM_Flag)
+                  {//fprintf(USB, "RXD2: %s\n",InterruptGSM_Rxd);
+                     if (GetResponse())
+                     {
+                        fprintf(USB, "Message sent to: %s\n",SERVERNUMBER);
+                        return 1;
+                        //break;
+                     }
+                     else
+                        {
+                        fprintf(USB, "GSM error 2: Message NOT sent.\n"); //Returns ERROR -> No / low GSM signal causes SMS sending failure
+                        InterruptGSM_Flag=0;
+                        return 0;
+                        }
+                  }
+                  
+//!                  else
+//!                     {
+//!                     fprintf(USB, "Waiting for GSM response %i.\n",counter);
+//!                     }  
+                    delay_ms(1000);     
+               } while(counter++ < 20);
+               
+               fprintf(USB, "GSM Timeout 2: Message NOT sent.\n");
+               return 0;
+               
+               }
+            else
+               {
+//!               InterruptGSM_Flag=0; //resetting the flag to 0
+               fprintf(USB, "GSM error 1:  Message NOT sent.\n");
+               return 0;
+               }
+         }
+//!      else
+//!         {
+//!         fprintf(USB, "Waiting for GSM response %i.\n",counter);
+//!         }
+       
+        
+       delay_ms(500);
+      } while(counter++ < 10); //total waiting time of 2 seconds
+   
+   fprintf(USB, "GSM Timeout 1: Message NOT sent.\n");
+   return 0;
+   }// end SendSMS()
+*/
+
+char *getGSM_Strength()
+{
+   char *statx=NULL;
+   char *statcat=NULL;
+   
+   strcpy(DESIRED_RESPONSE, "+CSQ: ");
+   clear_InterruptGSM();
+   //delay_ms(200);
+   fprintf(GSM,"AT+CSQ\r");
+   statx = GetResponse();
+   strcpy(TOKEN,",");
+   statcat = strtok(statx,TOKEN);
+   //strcpy(funcReturnVar,statcat);
+   
+//!   fprintf(USB,"GSM signal: %s\n",statcat);
+   
+   return statcat;
+}
+
+
+void AttemptToSend(char *msg, char *num) // attempt to send three times
+{  
+   int try = 1;
+   
+   fprintf(USB,"SMS: %s\n", msg);
+   
+   while (try<=5)
+   {//restart_wdt();
+   
+   getGSM_Strength();
+   fprintf(USB, "Try to send %i -> ",try);
+   
+   if (SendSMS(msg, num))
+      {
+       break;
+      }
+   else
+      {
+       
+       try++;
+      }
+   }
+   delay_ms(100);
+
+}
+
+//!void AttemptToSend() // attempt to send three times
+//!{
+//!
+//!   int try = 1;
+//!   
+//!   fprintf(USB,"SMS: %s\n", SMS_TOBE_SENT);
+//!   
+//!   while (try<=5)
+//!   {//restart_wdt();
+//!   
+//!   getGSM_Strength();
+//!   fprintf(USB, "Try to send %i -> ",try);
+//!   
+//!   if (SendSMS(SERVERNUMBER))
+//!      {
+//!       break;
+//!      }
+//!   else
+//!      {
+//!       
+//!       try++;
+//!      }
+//!   }
+//!   
+//!
+//!}
+
+void SetGSMTime(char *clockSetting) // this function sets the GSM time
+{
+   char *ptrx=NULL;
+   char clockx[30] = {};
+   
+   strcpy(clockx,clockSetting);
+   
+   strcpy(DESIRED_RESPONSE, "OK");
+   //delay_ms(100);
+   
+//!   clear_InterruptGSM();
+//!   fprintf(GSM, "AT+CCLK=?\r");
+//!   delay_ms(100);
+//!   fprintf(USB, "RXD1: %s\n", InterruptGSM_Rxd);
+   
+   clear_InterruptGSM();
+   //fprintf(USB, "AT+CCLK=\"%s\"\r\n",clockx);
+   fprintf(GSM, "AT+CCLK=\"%s\"\r",clockx);
+   delay_ms(100);
+   
+   if (GetResponse())
+      fprintf(USB,"GSM clock set\n");
+      
+   else
+      fprintf(USB,"GSM clock NOT set\n");
+      
+   strcpy(DESIRED_RESPONSE, "+CCLK: ");
+   clear_InterruptGSM();
+
+   fprintf(GSM,"AT+CCLK?\r");
+   delay_ms(50);
+   ptrx = strtok(GetResponse(),TOKEN);
+   
+//!   fprintf(USB,"GSM date and time: %s\n",ptrx);
+   
+}
+
+

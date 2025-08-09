@@ -1,0 +1,9 @@
+void ShutDownGSM()
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_InterruptGSM();
+   delay_ms(200);
+   fprintf(GSM,"AT^SMSO\r");
+   if(GetResponse())
+      fprintf(USB,"GSM Module Shutdown\n");
+}

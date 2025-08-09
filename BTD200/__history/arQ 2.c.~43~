@@ -1,0 +1,421 @@
+//Author: Glenn Vincent Lopez
+//May 11, 2022
+
+#include <18F87K22.h>
+#device adc=12
+#FUSES WDT_SW, WDT32768, INTRC_IO, SOSC_HIGH, NOPROTECT, NOIESO, BROWNOUT, PUT, NOCPD, STVREN, NODEBUG, NOWRT, NOWRTD, NOEBTR, NOCPB, NOEBTRB, NOWRTC, NOWRTB, FCMEN, NOXINST, MCLR, RTCOSC_T1
+#use delay(clock=16000000)
+
+#use spi(MASTER, FORCE_HW, SPI1, MODE=1, BITS=8)
+#use i2c(MASTER, sda=PIN_D5, scl=PIN_D6)
+
+//#use rs232 (baud=9600, parity=e, bits=8, stop=1, xmit=PIN_E4, rcv=PIN_E7, stream=RS485_GDAT2)
+#use rs232 (baud=9600, parity=e, bits=8, stop=1, xmit=PIN_E4, rcv=PIN_E7, stream=RS485_GDAT1)
+
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdint.h>
+
+#include <arQ1010/globalVariables.h>
+
+#include <arQ1010/pinDefinitions.c>
+#include <arQ1010/interruptSerial2_USB.c>
+#include <arQ1010/InterruptSerial1_GSM.c>
+#include <arQ1010/interruptExt1_GSM.c>
+#include <arQ1010/interruptExt2_IN2.c>
+#include <arQ1010/dualColorLED.c>
+#include <arQ1010/gsm.c>
+#include <arQ1010/interruptTimer1.c>
+
+#include <arQ1010/rtc.c>
+#include <arQ1010/dateTimeDetails.c>
+#include <arQ1010/debugmode.c>
+#include <arQ1010/crc_generate.c>
+//#include <arQ1010/voltageDetails.c>
+#include <arQ1010/rs485.c>
+
+#include <sensors/AS3935.c>
+#include <sensors/BTD200.c>
+
+
+
+void mcuStatusOnStartUp()
+{
+
+   char strx[20] = {};
+   char *msgP1=NULL;
+   char message[40];
+   
+   int cause;
+   
+   cause=restart_cause();
+   switch ( cause )
+   {
+      
+      case WDT_TIMEOUT: //7
+      { 
+          strcpy(strx,"WATCHDOG TIMEOUT");
+          break;
+      }
+      
+      case NORMAL_POWER_UP: //12 after upload of firmware
+      {
+         strcpy(strx,"FRESH POWER UP!");
+         break;
+      }
+      
+      case RESET_INSTRUCTION: //0
+      {
+//!         readDataEEprom(EEPROM_RESET_NUMBER);
+         strcpy(strx, "SOFTWARE RESET-");
+//!         strcat(strx, funcReturnVar);
+         break;
+      }
+      
+      case MCLR_FROM_RUN:    //15
+      {
+          strcpy(strx,"HARDWARE RESET");
+          break;
+      }
+      
+      default:
+      {
+         sprintf(strx, "OTHER RESET CAUSE (%i)", cause );
+      }
+   }
+   
+   fprintf(USB,"%s\n",strx);
+//!   strcpy(SMS_TOBE_SENT,strx);
+   getMcuDateTime();
+//!   sprintf(SMS_TOBE_SENT, "%s - %s", strx, getMcuDateTime()); //getDateTime()
+   //sprintf(message, "%s - %s", strx, globalDT); //getDateTime()  
+   sprintf(message, "%s - %s", strx, strDateTime); //getDateTime() 
+   AttemptToSend(message,MYNUMBER2);
+   
+}
+
+//char xxx[255]={};
+void main()
+   {
+    char dbg[6]="debug";
+    char reset[6]="reset";
+    char *ptr=NULL;
+    char *bptr=NULL;
+    char *signal=NULL;
+    char septr[6];
+    
+  ///  char mainBT[20];
+    char fcBTD[60]; 
+    
+    char message[255]={};
+    unsigned int8 tmp1;
+    int i;
+    int byteCount;
+    
+    //unsigned char flashBTD;
+   delay_ms(500);
+   
+
+   fprintf(USB, "\n*************************************************\n");
+   fprintf(USB, "ULAT Lightning Monitoring Station (Beta version)\n");
+  
+
+//!   while(1)
+//!      {printf("ICD\n");
+//!       delay_ms(1000);
+//!      }
+//!   
+//!   
+   enable_interrupts(INT_TIMER1); // enable timer1 interrupt, through the use of the 32 khz oscillator, it will be triggered every second   
+   enable_interrupts(INT_RDA);    // hardware UART interrupt, used by Radio/GSM module
+   enable_interrupts(INT_RDA2);   // hardware UART interrupt, used by USB through RS232 interface via the USB port
+   enable_interrupts(INT_EXT);    // B0 used by rain gauge
+   enable_interrupts(INT_EXT1);   // RING OUT - will be triggered once a call or text is received by the gsm module
+   //enable_interrupts(INT_EXT2);   // Interrupt 2 is triggered when there is interrupt signal from the AS3935
+   enable_interrupts(GLOBAL);     // main switch for all the interrupts
+ 
+   ext_int_edge(2,H_TO_L);         // configure INT2 state change to trigger interrupt 2  
+   
+   setup_wdt(WDT_ON);// enable watch dog
+   //setup_wdt(WDT_128S);  
+   
+   setup_timer_1(T1_EXTERNAL|T1_DIV_BY_1|T1_ENABLE_SOSC); //no T1_CLK_OUT
+   
+   setup_spi(SPI_MASTER |SPI_L_TO_H | SPI_XMIT_H_TO_L | SPI_CLK_DIV_64);  // Working with AS3935, set as default
+    
+   delay_ms(500);
+   //Thunder_Init();
+    
+   
+   
+   InitGSM();                      // initialize GSM
+  
+
+   rtc_acquire_sync();             // sync datetime from rtc chip to both GSM and MCU
+   
+
+   InterruptInput2_Flag=0;
+      
+   clear_InterruptUSB();
+
+/*  
+   Send to server through message format
+*/
+   strcpy(SERVERNUMBER,"639564334913");
+ //  strcpy(MYNUMBER1,"639564334913");
+   strcpy(MYNUMBER2,"639564334913");
+   //strcpy(MyNUMBER,"");
+   SENDING_TIME = 60; //60
+   
+   mcuStatusOnStartUp(); // function determines cause of MCU restart
+   
+//!   output_high(pin_BOOST1);  //18 volts
+   output_high(pin_BOOST2); //5 volts
+   fprintf(USB, "\nInitializing BTD200\n");
+   
+  // strBTD = "FC1+DN22.85+RN45+DN0.00+RN0+DN0.00+RN0+DN0.00+RN0+BT220401/15400220+DT220708/154120+GS11";
+ // int ind;
+    delay_ms(500);
+   
+   
+   while(1)
+      {
+      restart_wdt();
+      
+      delay_ms(10000);
+      //-------------For the mean time para di magsend
+      readSerial();
+  
+      getMcuDateTime();
+      //ledConfig(LED_GREEN);
+      //Check lightning flash count
+//!      strcpy(fcBTD, strBTD);
+    //  delay_ms(100);
+     // strcpy(fcBTD, "%s", strLaLo);
+      //strcpy(mainBT, biralBT);
+     // strcpy(septr,"FC+/,:");
+     // bptr = strtok(fcBTD, septr);
+     // fprintf(USB, "\nNumber of Flashes = %i ", flashCount[0]);
+      //fprintf(USB, "\nSample Data: %s\n", strLaLo);
+      // if lightning flash is greater than zero
+      if (flashCount[0] > 0)
+      {
+    //  AttemptToSend(BTDmessage,SERVERNUMBER);
+      AttemptToSend(BTDmessage,MYNUMBER2);
+      fprintf(USB, "\nSample Data: %s\n", BTDmessage);
+    /*     fprintf(USB,"\nLightning Detected!!!\n******************************************************************************************************************************************************\n");
+         signal = getGSM_Strength();
+        // fprintf(USB,"\nGSM signal: %s\n",signal);
+         getMcuDateTime(); //imediately get date and time
+        // sprintf(message, "%s+DT%s+GS%s", strBTD, globalDT, signal); //store flash data to message
+//!         sprintf(message, "%s+DT%s+GS%s", strBTD, strDateTime, signal); //store flash data to message
+         sprintf(message, "FC:%i+%sGS:%s+BT:%s+DT:%s", flashCount[0], strLaLo, signal, biralBT, strDateTime); //store flash data to message
+        // fprintf(USB, "\nSample Data: %s\n", message);
+         
+        // AttemptToSend(message,MYNUMBER1);
+       //  AttemptToSend(message,MYNUMBER2);
+//!         strcpy(strBTD, ""); 
+         strcpy(strLaLo, "");
+        // flashCount[0] = 0;
+         flashCount[0] =  "";
+         strcpy(biralBT, ""); 
+         */
+                 strcpy(BTDLaLo, "");   
+             strcpy(strDateTime, ""); 
+          strcpy(biralBT, ""); 
+        strcpy(BTDmessage, "");   
+           flashCount[0] =  "";
+      }
+     
+      
+      
+      
+ //-------------------End of BTD Data sending    
+      
+      if (BTDhealth[0] == 63)
+      {
+         sprintf(message, "Stable: Message 63"); //store flash data to message
+         //fprintf(USB, "\nSample Data: %s\n", message);
+         AttemptToSend(message,MYNUMBER2);
+        // AttemptToSend(message,SERVERNUMBER);
+         BTDhealth[0] = 0;
+      }
+     // fprintf(USB, "\n");
+      if (BTDhealth[0] == 100)
+      {
+         sprintf(message, "arQ-BTD Reconnected!"); //store flash data to message
+         //fprintf(USB, "\nSample Data: %s\n", message);
+         //AttemptToSend(message,MYNUMBER2);
+         //AttemptToSend(message,SERVERNUMBER);
+         BTDhealth[0] = 0;
+      }
+      
+/*     if (InterruptUSB_Flag)
+     {
+      DTindex[0] = 1;
+      clear_InterruptUSB();
+     }
+     
+     if(DTindex[0] > 0 && DTindex[0] < 16)
+//!     if(ind > 0 && ind < 16)
+     {
+         fprintf(USB, "\nAdding\n");
+         setBTD200DateTime(DTindex[0]);
+         readSerial();
+         DTindex[0]++;
+     }
+     
+     else if(DTindex[0] > 15)
+//!       else if(ind > 15)
+     {
+      DTindex[0] = 0;
+       clear_InterruptUSB();
+     } */
+ 
+     
+     
+/*      
+        if (InterruptInput2_Flag) //interrupt signal from AS3935
+        {  ledConfig(LED_GREEN);
+           fprintf(USB,"\nAS3935******************************************************************************************************************************************************");
+                                 
+           // We read the AS3935 registers to see what caused the interrupt
+           delay_ms(2);   // 2ms delay between interrupt and reading of register 0x03
+           
+           interrupt_source = Thunder_Read(0x03) & 0x0F; // Read the 0x03 register of AS3935 which stores interupt codes
+           //fprintf(USB, "Interrupt : %i - ",interrupt_source);
+           delay_ms(2);
+           
+           switch (interrupt_source) 
+               {
+      
+               case 1:  //noise level too high
+                  fprintf(USB,"AS3935: Noise Detected\n");
+                  //delay_ms(2000);
+                  break;
+             
+               case 4:  //Disturber Detected
+                  fprintf(USB,"AS3935: Disturbers Detected\n");
+                  //delay_ms(2000);
+                  break;
+      
+               case 8:  // is lightning
+                  ledConfig(LED_GREEN);
+                  //fprintf(USB,"Lightning detected - ");
+//!               Total_Lightings_Detected++;
+//!               if(Total_Lightings_Detected > 100)
+//!                  {Total_Lightings_Detected =0;
+//!                  }
+               
+                  
+                  
+                  // now we get the distance to the lightning event
+                  tmp1 = Thunder_Read_distance();
+                  //fprintf(USB,"Lightning detected within %u Km\n", tmp1);
+                  
+                  signal= getGSM_Strength();
+                  fprintf(USB,"\GSM signal: %s\n",signal);
+                  getMcuDateTime(); //imediately get date and time
+                  //fprintf(USB,"ptr: %s\n", ptr);
+                  
+//!                  sprintf(message, "Lightning within %i Km %s", tmp1, ptr); //getDateTime()
+                  sprintf(message, "AS%i+GS%s+DT%s", tmp1,signal,strDateTime); //getDateTime()
+                  //AttemptToSend(message,SERVERNUMBER);
+                  AttemptToSend(message,MYNUMBER1);
+                  //AttemptToSend(message,MYNUMBER2);
+                  
+                  
+                  
+                  
+//!                  setup_spi(SPI_MASTER |SPI_L_TO_H | SPI_XMIT_L_TO_H | SPI_CLK_DIV_64);  //- Working with pressure module
+//!                  getPressureReadings();
+//!                  strcat(funcReturnVar,'+');
+//!                  //strcat(funcReturnVar,tmp1);
+//!                  fprintf(USB,"Pressure: %s\n", funcReturnVar);
+//!                  setup_spi(SPI_MASTER |SPI_L_TO_H | SPI_XMIT_H_TO_L | SPI_CLK_DIV_64);  // Working with AS3935
+
+
+//!            
+                  break;  
+               }
+         
+            InterruptInput2_Flag= 0;
+            //strcpy(globalDT, ""); 
+      } */
+      
+       
+      if (InterruptUSB_Flag==1)              // if there is a character from USB, the interrupt will trigger            
+      {  ledConfig(LED_GREEN);
+                 
+         InterruptUSB_Rxd[InterruptUSB_Counter-1]='\0';
+         //fprintf (USB, "Int Ser 2 USB: %s\n", InterruptUSB_Rxd);
+         
+         //ptr= strlwr(INTSERIAL2USB_RXD); // change input to lowercase
+         //fprintf (USB, "ptr: %s\n", ptr);
+         
+         //getDataFromUSB();
+         
+         if (!stricmp(InterruptUSB_Rxd,dbg )) // if data from USB = debug, it will go into debug mode.
+         {
+            ledConfig(LED_GREEN);
+            fprintf(USB,"DEBUG MODE");
+            debugDetails();
+//!            whilex=1;
+//!            debugMenu();
+//!            while(whilex==1)
+//!            {
+//!               if (debugDetails())
+//!                  whilex=0;
+//!            }
+         }
+         
+         else if (!stricmp(InterruptUSB_Rxd,reset )) // if data from USB = debug, it will go into debug mode.
+         {
+            ledConfig(LED_GREEN);
+            fprintf(USB,"Reset MCU\n");
+            delay_ms(50);
+            reset_cpu();
+         }
+         
+         
+         clear_InterruptUSB();
+      }
+        
+      else  
+       { // nothing happens in otherwords no interrupts
+            if (SAMPLINGFLAG == TRUE)
+               {
+               ledConfig(LED_GREEN);
+               
+//!               readRtc(0);
+//!               getMcuDateTime();
+               SAMPLINGFLAG = FALSE;
+               }
+            
+            if (SYNCFLAG==TRUE)                 
+               {
+               ledConfig(LED_GREEN);
+               fprintf(USB,"Time Sync\n");
+               
+               rtc_acquire_sync();           // sync rtc datetime to both mcu and gsm 
+               SYNCFLAG = FALSE;             // two minutes before reaching the next hour, this will be activated
+               
+               }
+               
+             if (RESETFLAG==TRUE)                 
+               {
+               ledConfig(LED_GREEN);
+               //Thunder_Init();
+               RESETFLAG=FALSE;
+               }   
+               
+            
+            ledToggle(LED_GREEN);
+            delay_ms(500);       
+                      
+       }  
+      }
+   }  //end of main()
+
+

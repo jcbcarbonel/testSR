@@ -1,0 +1,11 @@
+//#use rs232(baud=9600, xmit=PIN_G4, rcv=PIN_G3, stream=SENSELOPE)
+#use rs232(baud=9600, xmit=PIN_F1, rcv=PIN_F5, stream=SENSELOPE)
+
+char FROMsenselope[255]={};
+char CMDsenselope[10]={};
+
+void fgetsRemover2();
+void GetDateTimeSenselope();
+void proc_SENSELOPE(int1 fmode);
+
+

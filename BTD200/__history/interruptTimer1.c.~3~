@@ -1,0 +1,60 @@
+#define IS_LEAP(year) (year%4 == 0)
+
+int1 IS_LEAP(year)
+{
+   int16 year_ = 0;
+   
+   year_ = year + 2000;
+}
+
+
+#int_TIMER1 
+void TIMER1_isr()    
+{ 
+   bit_clear(T1CON,1);
+   bit_set(TMR1H,7);
+   bit_set(T1CON,1);
+   
+   if (++SEC>59){
+      SEC=0;
+      TESTFLAG=TRUE;
+      if(++MIN>59){
+         MIN=0;
+         if(++HOUR>23){
+            SUNSHINE_RESET_FLAG=TRUE;
+            HOUR=0;
+            ++DAYS;
+            if ((DAYS == 29 && MONTH== 2 && !IS_LEAP(YEAR))
+               || (DAYS == 30 && MONTH==2)
+               || (DAYS == 31 && (MONTH==4 || MONTH==6 || MONTH==9 || MONTH==11))
+               || (DAYS == 32)
+               ){MONTH++;DAYS=1;}
+            if(MONTH == 13) {YEAR++; MONTH=1;}
+         }
+         if (HOUR == 8)
+            RESETFLAG=TRUE;
+      }
+   }
+   if (SUNSHINE_FLAG)
+   {
+      SUNSHINE_COUNT++;
+   }   
+   if ((HOUROLD != HOUR) && (MIN == 58))
+   {
+      SYNCFLAG=TRUE;
+      HOUROLD=HOUR;
+   }
+   
+   if ((MIN%SENDING_TIME) == 0)
+   {
+      if (CHECKMINUTE == FALSE)
+      {
+         CHECKMINUTE = TRUE;
+         SAMPLINGFLAG = TRUE;
+      }
+   }
+   else
+      CHECKMINUTE = FALSE;
+     
+}
+

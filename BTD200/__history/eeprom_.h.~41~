@@ -1,0 +1,37 @@
+//---------- 306 IS ALLOCATED FOR BOOTLOAD FLAG
+//---------- 307 IS DEPLOYMENT STATUS
+//---------- 315 IS SATELLITE OPTION         
+
+#define EEPROM_BOOTLOAD_FLAG      306
+#define EEPROM_DEPLOY_STATUS      307
+#define EEPROM_SATELLITE_STATUS   308
+#define EEPROM_PASSWORD_CHECK     309
+#define EEPROM_SERVERNUM_CHECK    320
+#define EEPROM_ARQCMD_CHECK       321
+#define EEPROM_RAINDYNAMIC_STATUS 322
+#define EEPROM_SENSORTYPE_CHECK   323
+#define EEPROM_SENDINGTIME_CHECK  324
+#define EEPROM_PBOARDCONFIG_CHECK 325
+#define EEPROM_SENDING_TIME       2
+#define EEPROM_PASSWORD           3
+#define EEPROM_SERVER_IP          4
+#define EEPROM_RESET_NUMBER       5
+#define EEPROM_SERVER_NUMBER      6
+#define EEPROM_SENSOR_TYPE        7
+#define EEPROM_PBOARD_CONFIG      8
+#define EEPROM_CMD                9
+#define EEPROM_ASTISERVERNUM      12
+#define EEPROM_TWOSERVERS         363
+
+void DelEepromPhoneNum();
+void DelOneNum(char *num1);
+void listPhNum(int hbp);
+void newEEData(char *eedata, unsigned int16 hbp);
+void AddDataEEprom(char *data,int hbp);
+void readCharEE(unsigned int16 hbp, char & outChar);
+void writeCharEE(char hbp, unsigned int16 addx);
+void ReadEE(unsigned int16 basti,unsigned int16 hbp);
+int1 checkEEpromStatus (unsigned int16 bry);
+void readDataEEprom(int hbp);
+
+int1 registered = 0;

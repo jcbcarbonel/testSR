@@ -1,0 +1,199 @@
+/*
+int Get_Data_AIO(char *strx)
+{
+   int ii=0;
+   int16 cnz = 0;
+   int zzz=0;
+   
+resetx:
+   
+   fprintf(PC,"REading frm AIO..\n");
+
+   restart_wdt();   
+   for (ii=0;ii<=110;ii++)
+      VAISALA_STREAM[ii]=0;
+   delay_ms(45);
+
+   ii = 0;
+   fprintf(SNSR_AIO,strx);
+   do
+   {
+      while(!kbhit(SNSR_AIO))
+      {
+         cnz++;
+         if (cnz >= 40000)
+         {
+            zzz++;
+            //output_high(SENSOR_PIN);
+            delay_ms(300);
+            //output_low(SENSOR_PIN);
+            cnz =0;
+            if (zzz>=5)
+            {
+               return 0;
+            }
+            goto resetx;
+         }
+      }
+      VAISALA_STREAM[ii] = fgetc(SNSR_AIO);
+      ii++;
+   }while (VAISALA_STREAM[ii-1]!=0x0D);
+   VAISALA_STREAM[ii-1] = '\0';
+   return ii;
+}
+*/
+
+int Get_Data_Vai(char *strx)
+{
+   int ii=0;
+   int16 cnz = 0;
+   int zzz=0;
+   
+resetx:
+   
+   fprintf(PC,"REading frm VAISALA..\n");
+
+   restart_wdt();   
+   
+   strcpy(VAISALA_STREAM,"");
+   delay_ms(45);
+
+   ii = 0;
+   fprintf(SNSR_VAI,strx);
+   do
+   {
+      while(!kbhit(SNSR_VAI))
+      {
+         cnz++;
+         if (cnz >= 40000)
+         {
+            zzz++;
+            enableBOOST1();
+            delay_ms(300);
+            disableBOOST1()
+            cnz =0;
+            if (zzz>=5)
+            {
+               return 0;
+            }
+            goto resetx;
+         }
+      }
+      VAISALA_STREAM[ii] = fgetc(SNSR_VAI);
+      ii++;
+   }while (VAISALA_STREAM[ii-1]!=0x0D);
+   VAISALA_STREAM[ii-1] = '\0';
+   return ii;
+}
+
+void initializeVai()
+{
+   char strx[40]={};
+   
+   strcpy(strx,"0SU,R=&00000000!");
+   Get_Data_Vai(strx);
+   strcpy(strx,"0RU,R=&11100000!");
+   Get_Data_Vai(strx);
+   strcpy(strx,"0WU,R=&01101100!");
+   Get_Data_Vai(strx);
+   strcpy(strx,"0TU,R=&11010000!");
+   Get_Data_Vai(strx);
+   strcpy(strx,"0RU,I=900,U=M,S=M,M=T,Z=A!");
+   Get_Data_Vai(strx);
+   strcpy(strx,"0WU,I=900,A=900,G=1,U=K,D=0,N=W,F=2!");
+   Get_Data_Vai(strx);
+   strcpy(strx,"0TU,I=60,P=M,T=C,N=T!");
+   Get_Data_Vai(strx);
+   fprintf(PC,"CONFIG OK!\n"); 
+}
+
+void vai_Rain_Cum_func()
+{
+   char tempStorage[15]={};
+   float _Rain=0;
+    
+   getAstring(VAISALA_STREAM,6,tempStorage);
+   //strcpy(tempStorage,funcReturnVar);
+   _Rain = atof(tempStorage);
+   VAISALA_RAIN_CUM = VAISALA_RAIN_CUM + _Rain;
+   sprintf(funcReturnVar, "%2.2f", VAISALA_RAIN_CUM);
+}
+
+void vai_Rain_Cum_reset()
+{
+   VAISALA_RAIN_CUM=0;
+}
+/*
+int1 VaiSms()
+{
+   int ii=0;
+   int xx=0;
+   char jointVal[10]={};
+   int1 startVal=FALSE;
+   int vaiPos=0;
+   int cnts=0;
+   char _REq[5]={};
+   
+   char tempStorage[150]={};
+   
+   
+   strcpy(_REq,"0R!");
+   ii=Get_Data_Vai(_REq);
+   
+   cnts=0;
+   REALDATA[ii] = '\0';
+   strcpy(tempStorage,REALDATA);
+   for(xx=2;xx<strlen(tempStorage);xx++)
+   {
+      if ((tempStorage[xx]!='+') && (startVal))
+      {
+         REALDATA[vaiPos++]=tempStorage[xx];
+      }
+      else
+      {
+         switch(cnts)
+         {
+            case 0:
+               strcpy(jointVal,"wd=");
+               startval=TRUE;
+               break;
+            case 1:
+               strcpy(jointVal,"deg\nws=");
+               break;
+            case 2:
+               strcpy(jointVal,"km/hr\nat=");
+               break;
+            case 3:
+               strcpy(jointVal,"C\nah=");
+               break;
+            case 4:
+               strcpy(jointVal,"\nap=");
+               break;
+            case 5:
+               strcpy(jointVal,"mmHg\nra=");
+               break;
+            case 6:
+               strcpy(jointVal,"mm\nrd=");
+               break;
+            case 7:
+               strcpy(jointVal,"s\nri=");
+               break;
+            case 8:
+               strcpy(jointVal,"mm/h");
+               xx=strlen(tempStorage);
+               break;
+         }
+         cnts++;
+         for(ii=0;ii<strlen(jointVal);ii++)
+            REALDATA[vaiPos++]=jointVal[ii];
+      }
+      
+   }
+   REALDATA[vaiPos++]='\n';
+   REALDATA[vaiPos++]='\0';
+   DateAdd(vaiPos);
+   fprintf(PC,"REALDATA:\n%s",REALDATA);
+   return 1;
+}
+*/
+

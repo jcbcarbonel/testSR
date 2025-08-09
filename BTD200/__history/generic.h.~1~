@@ -1,0 +1,4 @@
+void fgetsRemover(char *strx);
+void getAstring(char *strx,int endx,char *retVal);
+unsigned int atoi_b16(char *s);
+void bootloadFlag();

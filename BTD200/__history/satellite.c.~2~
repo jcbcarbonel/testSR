@@ -1,0 +1,190 @@
+
+void satelliteCommand()
+{
+   int16 timeout=0;
+   
+   timeout = 0;
+   clear_buffer();
+   fprintf(PC,"sat=%s\n",SMS_TOBE_SENT);
+   fprintf(SERIAL_INT,SMS_TOBE_SENT);
+   
+   
+   while ((INTSERIAL_FLAG == 0) && (timeout < 1000))
+   {
+      restart_wdt();
+      timeout++;
+      delay_ms(100);
+   }
+   delay_ms(200);
+}
+
+void satEchoOff()
+{
+   delay_ms(1500);
+   fprintf(SERIAL_INT,"ATEN=0\r");
+   delay_ms(1000);
+}
+
+void getCSQ()
+{
+   char *ptr;
+   
+   strcpy(TOKEN,"\r");
+   strcpy(DESIRED_RESPONSE, "+CSQ:");
+   strcpy(SMS_TOBE_SENT,"AT+CSQ\r");
+   satelliteCommand();
+   ptr = strtok(GetResponse(),TOKEN);
+   
+   strcpy(funcReturnVar,ptr);
+}
+
+
+void satIniforSend()
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   strcpy(SMS_TOBE_SENT,"AT+SBDD0\r");
+   satelliteCommand();
+   if(GetResponse())
+      fprintf(PC,"Sat buffer cleared\n");
+}
+
+void satWriteData()
+{
+   char longMsg[120] = {};
+   char charx = NULL;
+   
+   charx = '+';
+   strcpy(DESIRED_RESPONSE, "OK");
+   strncat(REALDATA,&charx,1);
+   getCSQ();
+   strcat(REALDATA,funcReturnVar);
+   strcpy(longMsg,REALDATA);
+   sprintf(REALDATA,"AT+SBDWT=%s\r",longMsg);
+   strcpy(SMS_TOBE_SENT,REALDATA);
+   fprintf(PC,"AT+SBDWT=%s\n",SMS_TOBE_SENT);
+   satelliteCommand();
+   if(GetResponse())
+      fprintf(PC,"Message Data written\n");
+}
+
+int satSendData()
+{
+   char *ptr=NULL;
+   int stat=0;
+   
+   strcpy(TOKEN,",");
+   strcpy(DESIRED_RESPONSE, "+SBDIX: ");
+   strcpy(SMS_TOBE_SENT,"AT+SBDIX\r");
+   satelliteCommand();
+   ptr = strtok(GetResponse(),TOKEN);
+   stat = atoi(ptr);
+   return stat;
+}
+
+int satProcess()
+{
+   int retx=0;
+   int stat=0;
+   
+retry:
+   retx++;
+   sensorPoll();
+   fprintf(PC,"^+retry=%i\n",retx);
+   satIniforSend();
+   satWriteData();
+   stat = satSendData();
+   if ((stat != 0) && (stat != 1) && (stat != 2) && (retx < 5))
+   {
+      //fprintf(PC,"stat=%i\n",stat);
+      delay_ms(2000);
+      goto retry;
+   }
+   else if (retx == 5)
+   {
+      fprintf(PC, "\nfailed\n");
+      return stat;
+   }      
+   else
+   {
+      fprintf(PC, "\nSend data complete\n");
+      return stat;
+   }
+}
+
+int satelliteSend()
+{
+   int procResult=0;
+   
+   ShutDownGSM();
+   delay_ms(700);
+   output_high(pin_CTS);
+   satEchoOff(); 
+   procResult = satProcess();
+   output_low(pin_CTS);
+   delay_ms(200);
+   InitGSM();
+   return procResult;
+}
+
+void SatelliteManualCommands()
+{
+   int1 satCommand=1;
+   //char charx = '\r';
+   
+   int x=0;
+   output_high(PIN_SAT_ON);
+   while(satCommand == 1)
+   {
+      
+      fprintf(PC,"Enter SATELLITE Command\n");
+      getDataFromPC();
+      delay_ms(100);
+      fprintf(PC, "from PC=%s\n",FROMSERIALPC);
+      if (strcmp(FROMSERIALPC,"EXIT")==0)
+      {
+         satCommand=0;
+         break;
+      }
+      //strcpy(SMS_TOBE_SENT,FROMSERIALPC);
+      //strncat(SMS_TOBE_SENT,&charx,1);
+      sprintf(SMS_TOBE_SENT,"%s\r",FROMSERIALPC);
+      satelliteCommand();
+      delay_ms(300);
+      for (x=0;x<70;x++)
+         fprintf(PC,"%c",RXD_DATA[x]);
+   }
+   output_low(PIN_SAT_ON);
+   
+   
+   //while(1)
+   //{
+      
+   //}
+}
+
+/*
+void readSatMsg()
+{
+   char *ptr=NULL;
+   char *ptr1=NULL;
+   char tempx[10] = {};
+   int cntx=0;
+   char x;
+   
+   
+   strcpy(DESIRED_RESPONSE, "+SBDRT: ");
+   strcpy(SMS_TOBE_SENT,"AT+SBDRT\r");
+   satelliteCommand();
+   fprintf(PC,"satResponse=\n");
+   for (x=0;x<50;x++)
+   {
+      fprintf(PC,"%c",RXD_DATA[x]);
+   }
+   ptr = GetResponse();
+   //fprintf(PC,"satResponse=%s\n",ptr);
+   
+   
+}
+*/
+
+

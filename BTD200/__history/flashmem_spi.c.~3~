@@ -1,0 +1,520 @@
+void clearCounters()
+{
+   DTFPageCnt =0;
+   DTFByteCnt =0;
+}
+
+//---------------------------------------------------------------------------
+// Function : DTFReadStatus(void)
+//            The Status register value
+#separate
+int8 DTFReadStatus(void)
+{
+    int8 Status;
+    //--- Select
+    DTFSelect();
+    //--- Command Read Status
+    spi_write(0xD7);
+    //--- Status Result
+    Status = spi_read(0);
+    //--- Unselect
+    DTFUnSelect();
+    return (Status);
+}
+
+//---------------------------------------------------------------------------
+// Function : DTFPageToRam(int16 PageNum, int1 buffer)
+//            Page to Buffer
+#separate
+void DTFPageToRam(int16 PageNum, int1 buffer)
+{
+    restart_wdt();
+    DTFAddress = (PageNum << 1);
+    
+    while (!DTFIsReady());
+    
+    DTFSelect();
+    
+    if (buffer == 0) 
+      spi_write(0x53); //buffer 1
+    else    
+      spi_write(0x55); //buffer 2
+    
+    spi_write(DTFAddress_H);
+    spi_write(DTFAddress_L);
+    spi_write(0x00);
+    
+    DTFUnSelect();
+}
+
+
+//---------------------------------------------------------------------------
+// Function : DTFRAMToPage(int16 PageNum)
+
+#separate
+void DTFRAMToPage(int1 buffer,int1 PageAdd)
+{
+    //--- Active buffer to main memory page
+    //delay_ms(200);
+    DTFAddress = (DTFPageCnt << 1);
+    
+    //--- Wait DTF_Ready
+    while (!DTFIsReady());
+    //--- Select
+    DTFSelect();
+    if (buffer == 0)
+      spi_write(0x83); //buffer 1
+    else
+      spi_write(0x86); //buffer 2
+      
+    
+    //--- 7 high address bits
+    spi_write(DTFAddress_H);
+    //--- 6 low address bits
+    spi_write(DTFAddress_L);
+    //--- don't care 8 bits
+    spi_write(0x00);
+    
+    //--- Unselect
+    DTFUnSelect();
+    if (PageAdd == 1)
+    {
+      DTFPageCnt++;
+      fprintf(PC,"DTFPageCnt=%lu\n",DTFPageCnt);
+      if (DTFPageCnt > (DTFNbrPage))
+      {
+         DTFPageCnt=0; 
+      }
+    }
+}
+//---------------------------------------------------------------------------
+// Function : DTFInitDump(void)
+
+
+#separate
+void DTFInitDump(int1 buffer,int16 pageToDump)
+{
+    //--- First page to dump
+    DTFDumpPageCnt = 0;
+    //--- Load first page in memory buffer
+    if (buffer == 0)
+      DTFPageToRam(DTFDumpPageCnt,0);
+    else
+      DTFPageToRam(DTFDumpPageCnt,1);
+}
+#separate
+//---------------------------------------------------------------------------
+// Function : DTFDumpPacket(void)
+
+int DTFDumpNextPage(void)
+{
+    //--- Next Page
+    DTFDumpPageCnt++;
+    //--- Not in Last Page ?
+    if (DTFDumpPageCnt < DTFPageCnt) {
+        //--- Load in memory buffer
+        DTFPageToRam(DTFDumpPageCnt,0);
+        //--- OK
+        return 1;
+    }// End If
+    //--- Fin
+    return 0;
+}
+//---------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------
+// Function : DTFOpen(void)
+#separate
+void DTFOpen(void)
+{
+    unsigned int8 status;
+    //--- Setup du SPI
+    setup_spi(SPI_MASTER|SPI_MODE_0|SPI_CLK_DIV_64);
+    //--- Buffer 1 Is Active Buffer
+    DTF_Buffer_2_Active = FALSE;
+   
+
+
+    //--- Read the status register
+    DTFReadStatus();
+    
+    //--- Read  2 just in case
+    status = DTFReadStatus();
+    fprintf(PC,"readstatus = %u\n",status);
+    
+    if (status & 0x80) {
+        
+        DTFFull = (DTFPageCnt == DTFNbrPage);
+        //--- First Word
+        DTFByteCnt = 0;
+        //--- Dump page Count
+        DTFDumpPageCnt = 0;
+        //--- DataFlash OK
+        DTFDriverRun = TRUE;
+    }// End If
+    else
+        //--- DataFlash HS ?
+        DTFDriverRun = FALSE;
+}
+
+
+
+
+
+
+
+
+
+//---------------------------------------------------------------------------
+// Function : DTFWriteToFlash(int8 Data,length,buffert)
+#separate
+void DTFWriteToFlash(char *buff, int16 len,int1 buffer)
+{
+   int16 x=0;
+   int16 n=0;
+   int1 boolx=0;
+   
+bry:
+   output_high(SCP_CSB);
+   if (boolx!=0)
+   {
+      n=x;
+      boolx=0;
+   }
+   
+    //--- Drivers RUN ?
+    delay_ms(10);
+    if (!DTFDriverRun)
+        return;
+    //--- DTF Full
+    if (DTFFull)
+        return;
+    //--- Wait Ready
+    while (!DTFIsReady());
+    //--- Start Write Ram
+    DTFSelect();
+    
+    if (buffer == 0)
+      spi_write(0x84); //buffer 1
+    else
+      spi_write(0x87); //buffer 2
+    
+    //--- 8 Don't care Bit
+    spi_write(0x00);
+    //--- High Byte address
+    spi_write(DTFByteCnt_H);
+    //--- Low Byte address
+    spi_write(DTFByteCnt_L);
+    
+    //--- Write The Value
+    for( x=n; x<len; x++)
+    {
+      spi_write(*buff++);
+      DTFByteCnt++;
+        
+      if (DTFByteCnt >= DTFPageSize)
+      {
+         DTFUnSelect();
+         DTFRAMToPage(0,1);
+         DTFByteCnt=0;
+         boolx=1;
+         x++;
+         goto bry;
+      }
+    }
+    spi_write('^'); 
+    DTFByteCnt++;
+    spi_write('~');
+    DTFUnSelect();
+    if (DTFByteCnt >= DTFPageSize)
+    {
+      DTFRAMToPage(0,1);
+      DTFByteCnt=0;
+    }
+    else
+      DTFRAMToPage(0,0);
+    
+     
+    
+    
+    //if (DTFByteCnt >= DTFPageSize)
+    //{
+    //  DTFRAMToPage(0,1);
+    //  DTFByteCnt=0;
+    //}
+    //else
+      
+      //DTFByteCnt=0;
+    
+     
+/*    
+    spi_write('@'); 
+    DTFUnSelect();
+    if (DTFByteCnt >= DTFPageSize)
+    {
+      DTFRAMToPage(0,1);
+      DTFByteCnt=0;
+    }
+    else
+      DTFRAMToPage(0,0);
+    
+*/    
+   DTFUnSelect();
+    //--- UnSelect
+}
+
+int1 DTFIsReady(void)
+{
+    int wait=0;
+
+    ///CS = 0;                         //Select the chip 
+    delay_ms(100);
+    DTFSelect();
+    
+    spi_write(0xD7);
+    ///wait = spi_write(0xD7);          //Status Register
+    spi_write(0xD7);
+    
+    wait = spi_read(0);
+    
+    ///CS = 1;                         //DeSelect the Chip
+    DTFUnSelect();
+    //stat = stat & 0x80;
+   delay_ms(1);
+   //if(wait > 0)
+   if (wait != -1 && wait != 0)
+   {
+        //fprintf(PC,"proc\n");
+        return 1;
+        
+   }
+   else
+        return 0;
+}
+
+
+
+void ReadPage(int1 buffer, char *text, char *startx, char *endx)
+{
+   char msgx[120] = {};
+   int1 checkEnd=0;
+   char findTxt[20] = {};
+   char  TxBuffer;
+   int16 ByteCnt=0;
+   int checkx=0;
+   int16 x = 0;
+   int16 yy=0;
+   int16 endpx=0;
+   int16 startpx=0;
+   
+   
+   startpx = atol(startx);
+   endpx = atol(endx);
+   
+   strcpy(findTxt,text);
+   yy=0;
+   
+   if (startpx > endpx)
+   {
+      checkEnd = TRUE;
+      endpx = DTFNbrPage;
+   }
+choyx:   
+   for (x=startpx;x<=endpx;x++)
+   {
+      restart_wdt();
+      DTFPageToRam(x, 0);
+      while (!DTFIsReady());
+      //--- Initialisation
+      DTFSelect();
+      
+      if (buffer == 0)
+         spi_write(0xD4);
+      else
+         spi_write(0xD6);
+      
+      //--- 8 Dont'care Byte
+      spi_write(0x00);
+      //--- High Byte address
+      spi_write(0x00);
+      //--- Low Byte address
+      spi_write(0x00);
+      //--- 8 Dont'care Byte
+      spi_write(0x00);
+      ByteCnt=0;
+      
+      do
+      {
+         TxBuffer = spi_read(0);
+         if (TxBuffer == '^')
+         {
+            msgx[yy] = '\n';
+            checkx = strstr(msgx,findTxt);
+            if (checkx != 0)
+            {
+               DTFUnSelect();
+               strcpy(funcReturnVar,msgx);
+               return;
+            }
+            else
+            {
+               yy=0;
+            }
+         }
+         else
+         {
+            msgx[yy++] = TxBuffer;
+            if (yy >119)
+               yy=0;
+         }
+      }while (ByteCnt++<(DTFPageSize-1));
+      DTFUnSelect();
+      //--- Unselect
+   }
+   if (checkEnd==TRUE)
+   {
+      checkEnd=FALSE;
+      startpx=0;
+      endpx = atol(endx);
+      goto choyx;
+   }
+   strcpy(msgx,"NO MATCH FOUND");
+   strcpy(funcReturnVar,msgx);
+}
+
+
+// Function : DTFDumpPacket(void)
+
+//---------------------------------------------------------------------------
+// Function : DTFReadFromPage(int16 PageNum, int16 Block, char endChar,char delim)
+//            Read Directly from Page
+
+#separate
+void DTFReadFromPage(int16 PageNum,int1 buffer)
+{
+   char  TxBuffer;
+   int16 ByteCnt=0;
+   
+   output_high(SCP_CSB);
+   DTFPageToRam(PageNum, 0);
+   while (!DTFIsReady());
+   //--- Initialisation
+   DTFSelect();
+ 
+   if (buffer == 0)
+      spi_write(0xD4);
+    else
+      spi_write(0xD6);
+    
+    //--- 8 Dont'care Byte
+    spi_write(0x00);
+    //--- High Byte address
+    spi_write(0x00);
+    //--- Low Byte address
+    spi_write(0x00);
+    //--- 8 Dont'care Byte
+    spi_write(0x00);
+    
+       
+    do {
+        TxBuffer = spi_read(0);
+        if (TxBuffer == '^')
+          fprintf(PC,"\n");
+        else    
+         fprintf(PC,"%c",TxBuffer);
+        
+    } while (ByteCnt++<(DTFPageSize-1));
+    //--- Unselect
+    DTFUnSelect();
+}
+
+
+
+//---------------------------------------------------------------------------
+// Function : DTFfindMarkers
+//            findMarkers
+void DTFfindMarkers(int1 buffer)
+{
+   char  TxBuffer;
+   char charx[2];
+   int16 ByteCnt=0;
+   int16 x=0;
+   int1 b1=0;
+   int1 b2=0;
+   
+   strcpy(charx,"]");
+   for (x=0;x<DTFNbrPage;x++)
+   {
+      DTFPageToRam(x, 0);
+      while (!DTFIsReady());
+      //--- Initialisation
+      DTFSelect();
+    
+      if (buffer == 0)
+         spi_write(0xD4);
+       else
+         spi_write(0xD6);
+       
+       //--- 8 Dont'care Byte
+       spi_write(0x00);
+       //--- High Byte address
+       spi_write(0x00);
+       //--- Low Byte address
+       spi_write(0x00);
+       //--- 8 Dont'care Byte
+       spi_write(0x00);
+       
+       
+       do {
+           TxBuffer = spi_read(0);
+           if (b1 == 0)
+           {
+              if (TxBuffer == ']') //last sent address
+              {
+                  LastSentDataBlock = ByteCnt;
+                  LastSentDataPage = x;
+                  b1 = 1;
+              }
+           }
+           if (b2 == 0)
+           {
+              if (TxBuffer == '^') //end address
+              {
+                  EndDataBlock = ByteCnt; 
+                  EndDataPage = x;
+                  b2 = 1;
+              }
+           }
+           if (b1 != 0 && b2 !=0)
+            return;
+       } while (ByteCnt++<DTFPageSize);
+       //--- Unselect
+       DTFUnSelect();
+   }
+   if (b1 == 0 || b2 == 0)
+   {
+      LastSentDataBlock = 0; 
+      LastSentDataPage = 0;
+      EndDataBlock= 1;
+      EndDataPage = 0;
+      DTFWriteToFlash(charx, strlen(charx),0);
+   }
+   fprintf(PC,"LastSentDataBlock=%li\n",LastSentDataBlock);
+   fprintf(PC,"LastSentDataPage=%li\n",LastSentDataPage);
+   fprintf(PC,"EndDataBlock=%li\n",EndDataBlock);
+   fprintf(PC,"EndDataPage=%li\n",EndDataPage);
+      
+}
+
+void SetSizeFT(void){   //Five Twelve (512)
+    //unsigned char stat;
+
+    ///CS = 0;                 //Select the chip 
+    DTFSelect();
+    spi_write(0x3D);         
+    spi_write(0x2A);         
+    spi_write(0x80);         
+    spi_write(0xA6);         
+    ///CS = 1;                 //DeSelect the Chip
+    DTFUnSelect();
+}

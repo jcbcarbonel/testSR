@@ -1,0 +1,142 @@
+//#use rs232(baud=9600, xmit=PIN_G4, rcv=PIN_G3, stream=IDP)// IDP
+
+void debugMenu()
+{
+   //fprintf(USB,"\n    FIRMWARE VERSION: %s\n",FIRMWARE);
+   
+   fprintf(USB,"      DEBUG MODE MENU\n");
+   fprintf(USB,"      A.     Get data from the sensor\n");
+   fprintf(USB,"      B.     Get arQ's current configurations\n");
+   fprintf(USB,"      C.     Display DEBUG menu\n");
+   fprintf(USB,"      D.     Change sending time\n");
+   fprintf(USB,"      E.     Check satellite sending\n");
+   fprintf(USB,"      F.     Set server number\n");
+   fprintf(USB,"      G.     List registered numbers\n");
+   fprintf(USB,"      H.     Generate CRC code\n");
+   fprintf(USB,"      I.     Set date and time\n");
+   fprintf(USB,"      J.     Set power board configuration\n");
+//!   fprintf(USB,"      K.     VAISALA settings\n");
+   fprintf(USB,"      L.     Download data from flash memory\n");
+   fprintf(USB,"      M.     Change password\n");
+   fprintf(USB,"      N.     Enable satellite\n");
+   fprintf(USB,"      O.     Set the sensor type\n");
+//!   fprintf(USB,"P.    Rain gauge test\n");
+   fprintf(USB,"      Q.    Test Iridium satellite commands\n");
+   //fprintf(USB,"      R.     Set soil sensor (5TE) ID\n");
+   fprintf(USB,"      S.     Turn off watchdog\n");
+//!   fprintf(USB,"      T.     Check boost pin\n");
+//!   #ifdef DYNAMICRAIN
+//!   fprintf(USB,"U.    Set dynamic rain\n");
+//!   #endif
+//!   fprintf(USB,"V.    Change RMYOUNG ID\n");
+   fprintf(USB,"      W.     Exit DEBUG mode\n");
+   fprintf(USB,"      X.     Delete registered number\n");
+   //fprintf(USB,"Z.    Change SENSLOPE command\n");
+   fprintf(USB,"      a.     Register number\n");
+   //fprintf(USB,"      b.     Set GSM provider\n");
+   //fprintf(USB,"      c.     Manual GSM commads\n");
+   //fprintf(USB,"d.    IDP test\n");
+   delay_ms(10);
+}
+
+
+int1 debugDetails()
+{
+   int16 yy=0;
+   
+   int1 exit_=0;
+   char debugDataInquire[50]={};
+   char passwordx[15]={};
+   
+   char strx[20]={};
+   char spacex[2]=" ";
+   char temp[20]={}; 
+   
+   char *ptrx;
+ 
+   strcpy(funcReturnVar,"");
+//   readDataEEprom(EEPROM_PASSWORD);
+//   strcpy(passwordx,funcReturnVar);
+   
+   fprintf(USB,"\nEnter Choice:\n");
+     
+   getDataFromUSB();
+   
+   switch(InterruptUSB_Rxd[0])
+   {
+      case 'I': //SET DATE AND TIME
+      {  
+         getDateTime();
+         //fprintf(USB,"Current date and time: %s\n",funcReturnVar);
+         fprintf(USB,"Press C to change\n");
+         
+         getDataFromUSB();
+                  
+         if (InterruptUSB_Rxd[0] == 'C')
+         {
+            fprintf(USB,"Enter Date and Time (FORMAT \"YY/MM/DD,HH:MM:SS\")");
+            
+            getDataFromUSB();
+            
+            setRtc(InterruptUSB_Rxd);
+            updateMcuDateTime(readRtc());
+            getMcuDateTime();
+            
+            //rtc_acquire_sync();
+            
+            //delay_ms(50); //needed to stabilize USB input
+            //sprintf(debugDataInquire,"DATETIME %s %s",passwordx,InterruptUSB_Rxd);
+           
+            //fprintf(USB, "%s",debugDataInquire);
+            // gsmInquire(debugDataInquire,1);
+           
+//!            InsertTimeToVariables(debugDataInquire);
+//!            rtcCreateTime();
+//!            //dateTimeStatus();
+//!            sprintf(SMS_TOBE_SENT,"DT-%s\n",funcReturnVar);
+//!         
+           /* 
+            if (strcmp(readRtc(1),ptrx)==0)
+               {SetGSMTime(getDateTime());  
+                fprintf(USB, "Set date and time success");
+               }
+            else
+               fprintf(USB,"Date and time sync error");
+         */
+         }
+         break;
+      }
+
+      default:
+         fprintf(USB,"Please choose another letter from the DEBUG menu\n");
+         break;
+      
+   clear_InterruptUSB();
+   }
+   return exit_;
+}
+//!
+//!void testDTR()
+//!{
+//!   int x;
+//!   int y=0;
+//!   if (DEBUGMODE != IN_DEBUG_MENU)
+//!   {
+//!      if (input(pin_USB_STAT))
+//!      {
+//!         for (x=0;x<=60;x++)
+//!         {
+//!            if (input(pin_USB_STAT)) 
+//!               y++;
+//!            else
+//!               return;
+//!            delay_ms(25);
+//!         }
+//!      }
+//!      if (y >= 50)
+//!         DEBUGMODE = USB_DETECTED;
+//!      else
+//!         DEBUGMODE = NO_USB;
+//!   }
+//!}
+

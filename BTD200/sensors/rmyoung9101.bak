@@ -1,0 +1,120 @@
+
+int1 dataPresent_rmyoung9101()
+{
+   int16 timeOut=0;
+   
+   while(!kbhit(RS485_RMYOUNG)&&++timeOut<50000)
+   { delay_us(50); }
+   if(!kbhit(RS485_RMYOUNG))
+      return 0;
+   else
+      return 1;
+}
+
+
+void parseRMYoungData()
+{
+   char strx[20]={};
+   char *ptr=NULL;
+   //char *ptr1;
+   char token_[3]={};
+   char windSpeedxx[6]={};
+   //int xx=0;
+   //char xxxsa;
+   char windDirection[6]={};
+   int x=0;
+   char delim='+';
+   
+   strcpy(token_," ");
+   strcpy(strx,funcReturnVar);
+   ptr = strtok(strx, token_);
+   while (x < 2)
+   {
+      ptr = strtok(0,token_);
+      if (x==0)
+         strcpy(windDirection,ptr);
+      if (x==1)
+         strcpy(windSpeedxx,ptr);
+      ptr=NULL;         
+      x++;
+   }
+   strcpy(funcReturnVar,windDirection);
+   strncat(funcReturnVar,&delim,1);
+   strcat(funcReturnVar,windSpeedxx);
+}
+
+
+
+void DataRMYoung9101()
+{
+   int1 dp=0;
+   char cx[55]={};
+   int retry = 0;
+   
+/*
+   fprintf(PC,"\nEnter command\n");
+   getDataFromPC();
+   fprintf(PC,"FROMSERIALPC=%s\n",FROMSERIALPC);
+*/
+
+retry_:  
+   int i=0;
+   fprintf(PC,"\nReading from rmyoung9101\n");               
+   if (retry > 4)
+   {
+      strcpy(funcReturnVar,"WDerr+WSerr");
+      return;
+   }      
+   delay_ms(500);
+   writeToRS485();
+   delay_ms(5);
+   fprintf(RS485_RMYOUNG,"%s","M3!");
+   readFromRS485();
+   while(i<35)
+   {
+      dp = dataPresent_rmyoung9101();
+      if (dp == 1)
+      {
+         cx[i]=fgetc(RS485_RMYOUNG);
+         if (cx[i] == '\r')
+            break;
+         i++;
+      }
+      else
+      {
+         delay_ms(1);
+         retry++;
+         goto retry_;
+      }
+   }
+   if (i > 33)
+      strcpy(funcReturnVar,"WDerr+WSerr");
+   else
+   {
+      cx[i]='\0';
+      strcpy(funcReturnVar,cx);
+      parseRMYoungData();
+   }
+}
+
+void ChangeIDRMYoung9101()
+{
+   int1 dp=0;
+   char cx[55]={};
+   int x = 0;
+   
+   output_low(OUT1_PIN);  
+   delay_ms(100);
+   fprintf(PC,"\nchanging id \n");
+   for (x=0;x<3;x++)
+   {
+      delay_ms(500);
+      writeToRS485();
+      delay_ms(5);
+      fprintf(RS485_RMYOUNG,"AD3!");
+      readFromRS485();
+   }      
+   fprintf(PC,"finished..\n");
+   DataRMYoung9101();
+   fprintf(PC,"RMyoungData=%s\n",funcReturnVar);
+}

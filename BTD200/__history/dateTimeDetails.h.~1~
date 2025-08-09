@@ -1,0 +1,13 @@
+int SEC=0;
+int MIN=0;
+int HOUR=0;
+int DAYS=0;
+int MONTH=0;
+int16 YEAR=0;
+int YEAR_PREV=0;
+
+void counterNewYear();
+void GetDateTime();
+void InputTimeManually();
+void InsertTimeToVariables(char *ptx);
+void downloadDateTime();

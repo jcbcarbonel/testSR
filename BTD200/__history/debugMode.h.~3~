@@ -1,0 +1,10 @@
+char DEBUGMODE='*';
+char const NO_USB = '$';
+char const USB_DETECTED = '*';
+char const IN_DEBUG_MENU = '?';
+
+void testDTR();
+//int1 waitForPress();
+
+
+int1 debugserverflag = 0;

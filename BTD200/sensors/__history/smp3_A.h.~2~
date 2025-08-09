@@ -1,0 +1,1 @@
+#use rs232 (baud=4800, parity=e, bits=7, stop=1, xmit=PIN_E4, rcv=PIN_E7, stream=RS485_HMP155)

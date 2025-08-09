@@ -1,0 +1,10 @@
+#define RS485_DE PIN_E5
+#define RS485_RE PIN_E6
+
+#use rs232 (baud=4800, parity=e, bits=7, stop=1, xmit=PIN_E4, rcv=PIN_E7, stream=RS485_GDAT1)
+
+
+void disable485();
+void writeToRS485();
+void readFromRS485();
+

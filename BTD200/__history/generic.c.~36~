@@ -1,0 +1,78 @@
+
+
+void getAstring(char *strx,int endx,char *retVal)
+{
+   char *ptr=NULL;
+   char tempx[100]={};
+   char tokx[3]={};
+   int x=0;
+   
+   strcpy(tokx,"+");
+   strcpy(tempx,strx);
+   ptr = strtok(tempx,tokx);
+   for(x=0;x<endx;x++)
+   {
+      ptr=strtok(0,tokx);
+   }
+   strcpy(retVal,ptr);
+}
+
+unsigned int atoi_b16(char *s) {  // Convert two hex characters to a int8
+   unsigned int result = 0;
+   int i;
+
+   for (i=0; i<2; i++,s++)  {
+      if (*s >= 'A')
+         result = 16*result + (*s) - 'A' + 10;
+      else
+         result = 16*result + (*s) - '0';
+   }
+
+   return(result);
+}
+
+void clearRainCumVars()
+{
+   rainReset_TIPPING();
+   vai_Rain_Cum_reset();
+}
+
+void bootloadFlag()
+{
+   writeCharEE(FIRMWARECHAR,EEPROM_BOOTLOAD_FLAG);
+}
+
+void powerBoostConfig(int1 acquire)
+// this is the configuration of the power boards for a specific sensor type
+//PBOARDCONFIG[0] = represents power board 1
+   //PBOARDCONFIG[1] = represents power board 2
+{
+//-----------------------------------------------
+   char ONSENDING='2';
+   char DISABLE='0';
+   char ENABLE='1';
+   
+   if (PBOARDCONFIG[0]==ONSENDING)
+   {
+      if (acquire==1)
+         enableBOOST1();
+      else if (acquire==0)
+         disableBOOST1();
+   }
+   if (PBOARDCONFIG[0]==DISABLE)
+      disableBOOST1();
+   if (PBOARDCONFIG[0]==ENABLE)
+      enableBOOST1();
+//-----------------------------------------------   
+   if (PBOARDCONFIG[1]==ONSENDING)
+   {
+      if (acquire==1)
+         enableBOOST2();
+      else if (acquire==0)
+         disableBOOST2();
+   }
+   if (PBOARDCONFIG[1]==DISABLE)
+      disableBOOST2();
+   if (PBOARDCONFIG[1]==ENABLE)
+      enableBOOST2();
+}

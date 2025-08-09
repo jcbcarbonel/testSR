@@ -1,0 +1,25 @@
+void getSoilmoistureData(char add)
+{
+   char tempStorage[10]={};
+   int1 resultx=0;
+   char addx = add;
+   
+   
+   delay_ms(1000);
+   tempStorage[0] = addx;
+   tempStorage[1] = '\0';
+   strcat(tempStorage,"M!");
+   fprintf(PC,"tempStorage1=%s\n",tempStorage);
+   sdi12A_process(tempStorage);
+   
+   tempStorage[0] = addx;
+   tempStorage[1] = '\0';
+   strcat(tempStorage,"D0!");
+   fprintf(PC,"tempStorage2=%s\n",tempStorage);
+   resultx=sdi12A_process(tempStorage);
+   if (resultx == 0)
+      strcpy(funcReturnVar,"ERR+ERR+ERR");
+}
+   
+   
+

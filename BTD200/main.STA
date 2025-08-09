@@ -1,0 +1,273 @@
+
+ROM used:   23102/131072 (18%)
+            23102/131072 (18%) including unused fragments
+
+            2.8 Average locations per line
+            15.3 Average locations per statement
+
+RAM used:   1441/3862 (37%) at main() level
+            1786/3862 (46%) worst case
+
+Stack used: 7 worst case (5 in main + 2 for interrupts)
+Stack size: 31
+
+Lines Stmts  %   Files
+----- ----- ---  -----
+  301    81   5  main.c
+ 1316     0   0  ..\..\..\..\Program Files (x86)\PICC\Devices\18F87K22.h
+ 2227   258  17  ..\..\..\..\Program Files (x86)\PICC\Drivers\math.h
+ 1352   359  24  ..\..\..\..\Program Files (x86)\PICC\Drivers\stdlib.h
+   32     0   0  ..\..\..\..\Program Files (x86)\PICC\Drivers\stddef.h
+  435     0   0  ..\..\..\..\Program Files (x86)\PICC\Drivers\string.h
+   28     0   0  ..\..\..\..\Program Files (x86)\PICC\Drivers\ctype.h
+  180     0   0  ..\..\..\..\Program Files (x86)\PICC\Drivers\stdint.h
+   94     0   0  arQ1010\globalVariables.h
+  107     0   0  arQ1010\pinDefinitions.c
+   25    10   1  arQ1010\interruptSerial2_USB.c
+   94    41   3  arQ1010\InterruptSerial1_GSM.c
+    8     2   0  arQ1010\interruptExt1_GSM.c
+   14     2   0  arQ1010\interruptExt2_IN2.c
+   41    20   1  arQ1010\dualColorLED.c
+  461   171  11  arQ1010\gsm.c
+   59    36   2  arQ1010\LTE.c
+   75    42   3  arQ1010\interruptTimer1.c
+  260    67   4  arQ1010\rtc.c
+  194    65   4  arQ1010\dateTimeDetails.c
+  150    39   3  arQ1010\debugmode.c
+   20     7   0  arQ1010\crc_generate.c
+   19     6   0  arQ1010\rs485.c
+  245    39   3  sensors\AS3935.c
+  563   266  18  sensors\BTD200.c
+----- -----
+ 8300  1511 Total
+
+Page ROM  %  RAM    Vol Diff  Functions:
+---- --- --- ---    --- ----  ----------
+0     42   0    1             @delay_ms1
+0     28   0    1             @I2C_WRITEU_129
+0     30   0    1             @I2C_READU_129
+0     70   0    1             @PUTCHAR_2_
+0     74   0    1             @GETCH_2_
+0    122   0   10             @FLT
+0     62   0    4             @SFTOI
+0     54   0    2             @ITOF
+0    246   1   11             @MULFF
+0    632   1   16             @ADDFF
+0    350   1   14             @DIVFF
+0    900   2   46   1146  9.9  cos
+0     80   0    8     44  1.9  sin
+0    106   0    9    280  5.5  strcat
+0    126   0   11    351  7.0  strncat
+0     74   0    9    266  6.5  memchr
+0    114   0    9    288  6.0  strpbrk
+0    136   0    9    346  7.5  strspn
+0     56   0    5    129  4.6  strlen
+0    180   0   10    496  8.2  strtok
+0    244   1    6    503  9.7  stricmp
+0     80   0    2             @MUL88
+0     86   0    6             @MULS1616
+0    402   1    9   1815 10.5  atoi
+0    442   1   27   1075 11.2  itoa
+0     94   0   14             @MUL3232
+0    234   1   14             @DIVS3232
+0    854   2   52   2354 12.5  strtol
+0     72   0    5             @DIV1616
+0     52   0    2     92  2.5  rda2_isr
+0     30   0    2     63  1.8  clear_InterruptUSB
+0     22   0    0             @const1401
+0     22   0    0     48  1.7  getDataFromUSB
+0     36   0    2     63  2.3  rda_isr
+0     60   0    3    216  3.6  clear_InterruptGSM
+0    478   1    6   1451 10.4  GetResponse
+0     44   0    3             @DIV88
+0     30   0    0     48  1.9  ext_isr1
+0     12   0    0     29  0.8  ext_isr2
+0     46   0    1    219  3.6  ledConfig
+0     64   0    2    240  3.3  ledToggle
+0     10   0    0             @const1432
+0     34   0    1             @SPRINTF
+0     10   0    0             @const1441
+0     24   0    0             @const1443
+0      4   0    0             @const1444
+0     20   0    0             @const1445
+0     46   0    3             @PSTRINGC_57600_31793_31794
+0     24   0    0             @const1447
+0     20   0    0             @const1449
+0     10   0    0             @const1452
+0     22   0    0             @const1453
+0     24   0    0             @const1456
+0     44   0    0             @const1458
+0     28   0    0             @const1459
+0     52   0    4             @PSTRINGCN_57600_31793_31794
+0     42   0    2             @PSTRINGR_57600_31793_31794
+0     30   0    0             @const1463
+0     30   0    0             @const1464
+0      8   0    0             @const1466
+0      6   0    0             @const1467
+0     12   0    0             @const1468
+0     20   0    0             @const1469
+0     12   0    0             @const1470
+0     12   0    0             @const1471
+0     12   0    0             @const1472
+0     12   0    0             @const1473
+0     18   0    0             @const1474
+0     12   0    0             @const1475
+0     12   0    0             @const1478
+0     20   0    0             @const1490
+0     40   0    2             @PSTRINGR_19200_31766_31767
+0     22   0    0             @const1494
+0     32   0    0             @const1495
+0     34   0    0             @const1496
+0     34   0    0             @const1497
+0     34   0    0             @const1498
+0      8   0    0             @const1503
+0     10   0    0             @const1509
+0     20   0    0             @const1510
+0    232   1    6             @PRINTF_D_57600_31793_31794
+0     14   0    0             @const1519
+0     16   0    0             @const1520
+0     20   0    0             @const1521
+0     10   0    0             @const1523
+0      6   0    0             @const1526
+0     18   0    0             @const1527
+0      8   0    0             @const1530
+0    108   0    4    167  2.5  sendToLTE
+0     16   0    0             @const1534
+0      6   0    0             @const1537
+0      4   0    0             @const1540
+0      6   0    0             @const1543
+0     14   0    0             @const1544
+0    112   0    5    222  5.8  IS_LEAP
+0    254   1    1   1428  6.4  TIMER1_isr
+0    148   0   13             @DIV3232
+0     30   0    2     69  3.1  rtcBCDToDec
+0     76   0    2     74  3.1  rtcDecToBCD
+0    422   1   38   1185  6.4  readRtc
+0    152   0    2             @PRINTF_U_1433
+0     24   0    0             @const1588
+0     42   0    2    102  1.8  configI2C
+0    710   2   35   1693  3.6  setRtc
+0     26   0    0             @const1603
+0     14   0    0             @const1604
+0     14   0    0             @const1608
+0     26   0    0             @const1611
+0     14   0    0             @const1612
+0     12   0    0             @const1614
+0     10   0    0             @const1615
+0     78   0    3    157  3.8  convertDateParam
+0    224   0    6             @PRINTF_D_1433
+0    270   1    5    425  3.9  getMcuDateTime
+0    532   1   29   1081  3.5  updateMcuDateTime
+0     16   0    0             @const1633
+0    110   0   22    185  3.1  rtc_acquire_sync
+0     24   0    0             @const1637
+0     24   0    0             @const1639
+0     40   0    0             @const1640
+0     48   0    0             @const1641
+0     34   0    0             @const1642
+0     34   0    0             @const1643
+0     38   0    0             @const1644
+0     32   0    0             @const1645
+0     38   0    0             @const1646
+0     32   0    0             @const1647
+0     32   0    0             @const1648
+0     44   0    0             @const1649
+0     46   0    0             @const1650
+0     30   0    0             @const1651
+0     32   0    0             @const1652
+0     34   0    0             @const1653
+0     46   0    0             @const1654
+0     32   0    0             @const1655
+0     30   0    0             @const1656
+0     40   0    0             @const1657
+0     30   0    0             @const1658
+0    356   1  112    744  7.8  debugDetails
+0     16   0    0             @const1668
+0     20   0    0             @const1669
+0     50   0    0             @const1670
+0     50   0    0             @const1671
+0    192   0   16    420  7.1  crc_generator
+0     14   0    0             @const1694
+0   1558   3    3   2881  4.4  btdStatus
+0    174   0    0             @const1703
+0     26   0    0             @const1704
+0     50   0    4             @PSTRINGCN_1433
+0     38   0    2             @PSTRINGR_1433
+0     16   0    0             @const1708
+0     16   0    0             @const1710
+0     30   0    0             @const1714
+0     16   0    0             @const1716
+0     16   0    0             @const1718
+0     28   0    0             @const1722
+0     16   0    0             @const1724
+0     16   0    0             @const1726
+0     32   0    0             @const1730
+0     16   0    0             @const1732
+0     16   0    0             @const1734
+0     16   0    0             @const1740
+0     16   0    0             @const1742
+0    674   1    9   2954  5.4  readData
+0     26   0    0             @const1756
+0     26   0    0             @const1757
+0     26   0    0             @const1759
+0     26   0    0             @const1761
+0     16   0    0             @const1763
+0    948   2   49   3664  8.4  writeData
+0     22   0    0             @const1776
+0     22   0    0             @const1778
+0     22   0    0             @const1780
+0     22   0    0             @const1782
+0   1382   3   78   1663  9.4  polarConverter
+0     24   0    0             @const1796
+0     24   0    0             @const1799
+0     68   0    5             @FTOSD
+0    430   1   13             @PRINTF_L32D_1433FPFPF
+0     18   0    0             @const1805
+0      8   0    0             @const1806
+0      8   0    0             @const1807
+0     42   0    3             @PSTRINGC_1433
+0   1738   4  199   5720 10.3  readSerial
+0     76   0    2             @PRINTF_X_57600_31793_31794
+0     16   0    0             @const1832
+0     28   0    0             @const1835
+0    258   1    9             @PRINTF_LD_1433
+0    224   0    6             @PRINTF_D0_1433
+0    358   1   63    610  5.2  mcuStatusOnStartUp
+0     38   0    0             @const1848
+0     36   0    0             @const1849
+0     36   0    0             @const1850
+0     36   0    0             @const1851
+0     24   0    0             @const1852
+0      8   0    0             @const1854
+0    886   2   15   2002  6.4  MAIN
+0     52   0    0             @const1861
+0     50   0    0             @const1862
+0     34   0    0             @const1863
+0     22   0    0             @const1865
+0     12   0    0             @const1866
+0     12   0    0             @const1867
+0     12   0    0             @const1868
+ Inline         0             @cinit1
+
+Program metrics:
+    Functions               44
+    Statements              1511
+    Comments                2034
+    Volume (V)              66588
+    Difficulty (D)          235.7
+    Effort to implement (E) 15692296
+    Time to implement (T)   242 hours, 10 minutes
+    Est Delivered Bugs (B)  21
+    Cyclomatic Complexity   133
+    Maintainability (MI)    30
+
+ Segment     Used  Free
+-----------  ----  ----
+00000-00002     4  0  
+00004-00006     0  4  
+00008-000EC   230  0  
+000EE-0FFFE  22868  42430  
+10000-1FFFE     0  65536  
+
+
+

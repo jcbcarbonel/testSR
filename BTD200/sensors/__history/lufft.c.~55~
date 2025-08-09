@@ -1,0 +1,198 @@
+void getWINDdata() 
+{
+   // wind speed max
+   // wind speen ave
+   // wind direction max
+   // wind direction vct
+   
+   char charx='+';
+   int arrx[] = {3,4,8,9};
+   char strx[30]={};
+   char tempStorage[10]={};
+   
+   int i=0;
+   for (i=0;i<sizeof(arrx);i++)
+   {
+      getAstring(funcReturnVar,arrx[i],tempStorage);
+      if (i==0)
+         strcpy(strx,tempStorage);
+      else
+         strcat(strx,tempStorage);
+      strncat(strx,&charx,1);
+   }
+   strcpy(funcReturnVar,strx);
+}
+
+void getMinMaxTemp()
+{
+   char charx='+';
+   int arrx[] = {3,4};
+   char strx[20]={};
+   char retVal[10]={};
+   
+   int i=0;
+   for (i=0;i<sizeof(arrx);i++)
+   {
+      getAstring(funcReturnVar,arrx[i],retVal);
+      if (i==0)
+         strcpy(strx,retVal);
+      else
+         strcat(strx,retVal);
+      strncat(strx,&charx,1);
+   }
+   strcpy(funcReturnVar,strx);
+}
+
+
+
+void getBSWM_lufftData()
+{
+   char param[5]={};
+   char lufftData1[70]={};
+   char lufftData2[35]={};
+   char charx='+';
+   int1 tempresult = 0;
+   
+   getLufft2Streams();
+   strcpy(lufftData1,funcReturnVar);  // the lufft data streams are already merged
+   
+   strcpy(param,"0M1!");
+   sdi12A_process(param);
+   
+   strcpy(param,"0D0!");  //stream from temperature buffer
+   tempresult = sdi12A_process(param);
+   if(tempresult==1){
+      getMinMaxTemp();  // extract max and min temp
+      strcpy(lufftData2,funcReturnVar);}   //lufftdata2 contains the temperature data  
+   else{
+      strcpy(lufftData2,"ERR+ERR+");}
+   
+   strcpy(funcReturnVar,lufftData1);
+   strncat(funcReturnVar,&charx,1);
+   strcat(funcReturnVar,lufftData2);
+}
+
+void getLufft2Streams()
+{
+   char param[5]={};
+   char lufftData1[35]={};
+   char lufftData2[35]={};
+   char charx='+';
+   int1 lufftresult=0;
+   
+   strcpy(param,"0M!");
+   sdi12A_process(param);
+   
+   strcpy(param,"0D0!");  
+   lufftresult = sdi12A_process(param);
+   if(lufftresult==1){
+      strcpy(lufftData1,funcReturnVar);} //stream from first buffer
+   else{
+      strcpy(lufftData1,"ERR+ERR+ERR+ERR+ERR+ERR");}
+   
+   lufftresult=0;  //to initialize the lufft result back to 0
+   strcpy(param,"0D1!");  
+   lufftresult = sdi12A_process(param);
+   if(lufftresult==1){
+      if(lufftData2[0]==0)
+      { fprintf(PC,"LD2: %c\n",lufftData2[0]);
+        lufftData2[0]=NULL;
+      }
+      strcpy(lufftData2,funcReturnVar);
+      fprintf(PC,"LDstring: %c\n",lufftData2[0]);   
+   } //stream from second buffer
+   
+   else{
+      strcpy(lufftData2,"ERR+ERR+ERR+ERR+ERR");}
+   
+   
+   strcpy(funcReturnVar,lufftData1);
+   strncat(funcReturnVar,&charx,1);
+   strcat(funcReturnVar,lufftData2);
+}
+
+
+/*
+void getLufftSDIData(char *firstParam, int1 modex)
+{
+   char lufftData1[35]={};
+   char lufftData2[35]={};
+   int1 resultx=0;
+   char firstParm[5]={};
+   
+   strcpy(firstParm,firstParam);
+   
+   sdi12A_process_lufft(firstParm);
+   
+   strcpy(firstParm,"0D0!");
+   sdi12A_process_lufft(firstParm);
+   strcpy(lufftData1,funcReturnVar);
+   fprintf(PC,"1=%s\n",lufftData1);
+   delay_ms(100);
+   if (modex == 0)      
+      return;
+   strcpy(firstParm,"0D1!");   
+   resultx = sdi12A_process_lufft(firstParm);
+   if (resultx == 1)
+   {
+      strcpy(lufftData2,funcReturnVar);
+      fprintf(PC,"2=%s\n",lufftData2);
+      strcpy(funcReturnVar,lufftData1);
+      strcat(funcReturnVar,lufftData2);
+      fprintf(PC,"full=%s\n",funcReturnVar);
+   }
+   else
+   {
+      strcpy(funcReturnVar,"LUFFTERR");
+   }
+}
+
+/*
+void getLufftSDIData(char *firstParam, char *secondParam, int1 modex)
+//void getLufftSDIData(int modex)
+{
+   char lufftData1[35]={};
+   char lufftData2[35]={};
+   int1 resultx=0;
+   char firstParm[5]={};
+   char secondParm[5]={};
+   
+   
+   strcpy(firstParm,firstParam);
+   strcpy(secondParm,secondParam);
+   
+   if (modex == __LUFFT_TEMPDATA)
+      strcpy(tempStorage,"0M1!");
+   else
+      strcpy(tempStorage,"0M!");
+   sdi12A_process_lufft(tempStorage);
+   
+   strcpy(tempStorage,"0D0!");
+   sdi12A_process_lufft(tempStorage);
+   strcpy(lufftData1,funcReturnVar);
+   fprintf(PC,"1=%s\n",lufftData1);
+   delay_ms(100);
+   if (modex == __LUFFT_TEMPDATA)      
+      return;
+   else if (modex == __LUFFT_WINDDATA)
+   {
+      strcpy(tempStorage,"0D2!");
+      fprintf(PC,"0d2!\n");
+   }   
+   else
+      strcpy(tempStorage,"0D1!");
+   resultx = sdi12A_process_lufft(tempStorage);
+   if (resultx == 1)
+   {
+      strcpy(lufftData2,funcReturnVar);
+      fprintf(PC,"2=%s\n",lufftData2);
+      strcpy(funcReturnVar,lufftData1);
+      strcat(funcReturnVar,lufftData2);
+      fprintf(PC,"full=%s\n",funcReturnVar);
+   }
+   else
+   {
+      strcpy(funcReturnVar,"LUFFTERR");
+   }
+}
+*/

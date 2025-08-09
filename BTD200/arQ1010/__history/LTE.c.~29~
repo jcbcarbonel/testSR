@@ -1,0 +1,48 @@
+void initLTE()
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_InterruptGSM();
+   delay_ms(200);
+   fprintf(GSM,"init\r");
+   //delay_ms(1000);
+   if(GetResponse())
+      fprintf(USB,"LTE Initialized\n");
+}
+
+
+char *signalLTE()
+{
+   char *signal=NULL;
+   //strcpy(DESIRED_RESPONSE, "OK");
+   clear_InterruptGSM();
+   //delay_ms(200);
+    delay_ms(200);
+   fprintf(GSM,"signal\r");
+   signal = GetResponse();
+   //fprintf(USB, signal);
+   return signal;
+}
+
+void sendToLTE(char *msg)
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_InterruptGSM();
+   delay_ms(200);
+   fprintf(GSM, msg);
+   if(GetResponse())
+      fprintf(USB,"\nSMS Sent: %s\n", msg);
+ }  
+ 
+ 
+ void igtLTE()
+{
+   strcpy(DESIRED_RESPONSE, "OK");
+   clear_InterruptGSM();
+   delay_ms(200);
+   fprintf(GSM,"igt\r");
+   delay_ms(200);
+   if(GetResponse())
+      fprintf(USB,"LTE Ignited\n");
+      initLTE();
+}
+

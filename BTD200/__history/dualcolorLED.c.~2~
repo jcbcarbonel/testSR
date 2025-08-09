@@ -1,0 +1,21 @@
+#define LED_OFF 0
+#define LED_GREEN 1
+#define LED_RED 2
+
+void ledConfig(int mode)
+{
+   switch (mode) {
+      case LED_GREEN:
+         output_high(LED_STAT_A);
+         output_low(LED_STAT_B);
+         break;
+      case LED_RED:
+         output_low(LED_STAT_A);
+         output_high(LED_STAT_B);
+         break;
+      default:
+         output_low(LED_STAT_A);
+         output_low(LED_STAT_B);
+         break;
+   }
+}

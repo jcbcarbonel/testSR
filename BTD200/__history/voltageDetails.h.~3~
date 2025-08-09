@@ -1,0 +1,10 @@
+const int1 LIPO_bat = 0;
+
+
+int BATTERYUSED = LIPO_bat; 
+
+float batExt_adc(int channelx);
+float batAdc();
+void batPath();
+int compareSourceVoltages();
+float getADCVoltage(int channel);

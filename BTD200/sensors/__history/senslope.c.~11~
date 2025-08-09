@@ -1,0 +1,177 @@
+
+
+
+void fgetsRemover2()
+{
+   int xx = 0;
+   xx = strlen(FROMsenselope);
+   FROMsenselope[xx-1]='\0';
+}
+
+void GetDateTimeSenselope()
+{
+   int ii=0;
+   int xx=0;
+   char forTime[5]={};
+   char strDateTime[20] ={};
+   
+   strcpy(funcReturnVar,"");
+   for (xx=0;xx<=5;xx++) 
+   {
+      switch(xx) {
+         case 0:
+            itoa(YEAR,10,forTime);
+            break;
+         case 1:
+            itoa(MONTH,10,forTime);
+            break;
+         case 2:
+            itoa(DAYS,10,forTime);
+            break;
+         case 3:
+            itoa(HOUR,10,forTime);
+            break;
+         case 4:
+            itoa(MIN,10,forTime);
+            break;
+         case 5:
+            itoa(SEC,10,forTime);
+            break;
+      }
+      if (strlen(forTime)==4) {
+         strDateTime[ii++] = forTime[2];
+         strDateTime[ii++] = forTime[3];
+         //strDateTime[ii++] = ':';
+         }
+      else if (strlen(forTime)<2) {
+         strDateTime[ii++] = '0';
+         strDateTime[ii++] = forTime[0];
+         //strDateTime[ii++] = ':';
+         }
+      else if (strlen(forTime)==2)  {
+         strDateTime[ii++] = forTime[0];
+         strDateTime[ii++] = forTime[1];
+         //strDateTime[ii++] = ':';
+         }
+      else {
+         strDateTime[ii++] = '0';
+         strDateTime[ii++] = '0';
+         //strDateTime[ii++] = ':';
+         }
+   }
+   //ii--;
+   strDateTime[ii] = '\0';
+  
+   strcpy(funcReturnVar,strDateTime);
+}
+
+
+void proc_SENSELOPE(int1 fmode, char *num)
+    {int i=0;
+     char *ptr = NULL;
+     char token[6];
+     int pageTotal=0;
+     int pageCount=0;
+     //char data[6][160];
+     char temp[160];
+     int32 timeOut=0;
+     
+     
+     delay_ms(800);
+     fprintf(PC, "\nCMD: %s\n", CMD);
+     fprintf(SENSELOPE, "%s\n", CMD);
+     //delay_ms(100);
+     //fprintf(PC, "\nSTART!");
+     while(!kbhit(SENSELOPE)&&++timeOut<2000000)
+         {delay_us(10);}
+     timeOut=0;
+     if(kbhit(SENSELOPE))
+      {while(1)       
+       {//gets(fromSenselope,SENSELOPE);
+        //fprintf(PC,"\nKBHIT");
+        i=0;
+        while(1)
+         {fromSenselope[i]=fgetc(SENSELOPE);
+          if(FROMsenselope[i]=='<')
+            break;
+          i++;
+         }   
+        FROMsenselope[i]=0x00;
+        //fprintf(PC, "\nDATA RECEIVED: %s",fromSenselope);
+       
+       //fprintf(PC, "\n%s",fromSenselope);
+       strcpy(token,">/");
+       ptr=strtok(FROMsenselope,token);      //pageCount
+       //fprintf(PC, "\nptr: %s",ptr);
+       
+       pageCount=atoi(ptr);
+       //fprintf(PC, "\npC: %s",ptr);
+       
+       strcpy(token,"#");
+       ptr=strtok(0,token);      //pageTotal
+       pageTotal=atoi(ptr);
+       //fprintf(PC, "\npT: %s",ptr);
+       ptr=strtok(0,token);      //master name
+       strcpy(temp,ptr);
+       
+       strcat(temp,"*");
+       GetDateTimeSenselope();
+       //fprintf(PC, "\ndatetime: %s",funcReturnVar);
+       strcat(temp,funcReturnVar);
+       
+       //strcpy(data[pageCount],temp);
+       fprintf(PC,"\npage: %i/%i",pageCount,pageTotal);
+       fprintf(PC,"\ndata: %s\n",temp);
+       if(fmode==1)
+         {strcpy(SMS_TOBE_SENT, temp);
+          if (!AttemptToSend(num))
+            {fprintf(PC,"MESSAGE SENT FAILED\n");
+             //satelliteSend();
+            }
+         }       
+       
+       if(pageCount==pageTotal)
+         {break;
+         }
+       
+       //fprintf(PC, "OK\n");
+       fprintf(SENSELOPE, "OK\n");
+       //fprintf(PC,"\ndata: %s",data[pageCount]);
+       
+       }//end while loop
+       /*
+       if(timeOut==1000000)
+       {fprintf(PC, "\nCOMMUNICATION FROM SENSELOPE LOST!");
+        strcpy(SMS_TOBE_SENT, "COMMUNICATION FROM SENSELOPE LOST!");
+        if (!AttemptToSend())
+         {fprintf(PC,"MESSAGE SENT FAILED\n");
+          satelliteSend();
+         }
+       }
+       else*/
+       {fprintf(PC, "\nFINISHED\n");
+        fprintf(SENSELOPE,"END\n");
+       }
+       /*
+       for(i=1;i<=pageTotal;i++)
+         {fprintf(PC, "\ndata%i,%i: \n%s",i,strlen(data[i]),data[i]);
+          delay_ms(100);
+         }
+       */  
+       /*
+       unsentCnt=1;
+       //fprintf(PC,"MESSAGE SENT FAILED\n");
+       WriteUnsentToBuffer2(SMS_TOBE_SENT,strlen(SMS_TOBE_SENT));
+       */    
+       
+      }
+      else
+         {fprintf(PC, "NO DATA FROM SENSELOPE\n");
+          strcpy(SMS_TOBE_SENT, "NO DATA FROM SENSELOPE");
+          if (!AttemptToSend(num))
+            {fprintf(PC,"MESSAGE SENT FAILED\n");
+             //satelliteSend();
+            }
+         } ///retry for 5 times, if failed again msend message DUE no response to server
+     //output_high(SENSOR_PIN);
+    }

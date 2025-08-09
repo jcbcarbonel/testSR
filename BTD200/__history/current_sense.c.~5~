@@ -1,0 +1,223 @@
+#include <18F87K22.h>
+#device adc=12
+#device PASS_STRINGS = IN_RAM
+
+#FUSES WDT_SW, WDT32768, INTRC_IO, NOPROTECT, NOIESO, BROWNOUT, PUT, NOCPD, STVREN, NODEBUG, NOWRT, NOWRTD, NOEBTR, NOCPB, NOEBTRB, NOWRTC, NOWRTB, FCMEN, NOXINST, MCLR, RTCOSC_T1
+#use delay(clock=16000000)
+
+#use rs232(baud=57600, xmit=PIN_G1, rcv=PIN_G2, stream=PC)
+#use rs232 (baud=19200, xmit=PIN_C6, rcv=PIN_C7, stream=SERIAL_INT)
+#use i2c(MASTER, sda=PIN_D5, scl=PIN_D6)
+//#include "bootloader.h"
+
+#include <stdlib.h>
+#include <string.h>
+
+#define INTERNAL_LED_STAT
+
+#case
+
+#define BUFFER_SIZE      255
+#define GETBOOSTVOLTAGE
+
+unsigned char const FIRMWARE[] = {"v.2.8"};
+
+char SENSORTYPE=NULL;
+char SERVERNUMBER[15]={};
+char funcReturnVar[BUFFER_SIZE]={};
+char FROMSERIALPC[25]={};
+char REALDATA[BUFFER_SIZE];
+
+
+#define RTC_I2C_ADDR_2129   81
+#define RTC_I2C_ADDR_8523   104
+#define RTC_CONTROL1_REG   0x00
+#define RTC_CONTROL2_REG   0x01
+#define RTC_CONTROL3_REG   0x02
+
+#define RTC_SEC_REG         0x03
+#define RTC_MIN_REG         0x04
+#define RTC_HOUR_REG      0x05
+#define RTC_DATE_REG      0x06
+#define RTC_WEEKDAY_REG      0x07
+#define RTC_MONTH_REG      0x08
+#define RTC_YEAR_REG      0x09
+#define IGT_PIN PIN_C2
+
+void IgniteModule()
+{
+   output_low(IGT_PIN);
+   delay_ms(10);
+   output_high(IGT_PIN);
+   delay_ms(110);
+   output_low(IGT_PIN);
+   delay_ms(1000);
+//   {
+//      delay_ms(100);
+//   } while(!testGSM());
+}
+
+
+void batPath()
+{
+   float adcValue=0;
+   float tempx=0;
+   float current = 0; 
+   char battery[8]={};
+   char batSource[3]={};
+   int x=0;
+   
+   set_adc_channel(5);
+   
+   for (x=0;x<100;x++)
+   {
+      adcValue = read_adc();
+      tempx = (tempx + adcValue) / 2;
+      delay_us(100);
+   }      
+      
+   fprintf(PC,"batAdc=%2.2f\n",adcValue);
+   adcValue = ((adcValue * 3.315) / 4096.0);
+   fprintf(PC,"batAdc=%2.6f\n",adcValue);
+   adcValue = adcValue * 0.07723;
+   adcValue = adcValue / 50;
+   fprintf(PC,"voltage=%2.5f\n",adcValue);
+   current = (adcValue /0.330) * 1000;
+   fprintf(PC,"current=%2.5f\n",current);
+   //adcValue = ((adcValue * 3.285) / 4096.0) * 1.995;
+   
+   //sprintf(battery,"%2.1f",adcValue);
+   //strcat(battery,batSource);
+   //strcpy(funcReturnVar,battery);
+}
+
+void main()
+{
+   char xx[12]={};
+   
+   delay_ms(2000);
+   
+   fprintf(PC,"***********");
+   setup_timer_1(T1_EXTERNAL|T1_DIV_BY_1|T1_ENABLE_SOSC); //no T1_CLK_OUT
+   
+   port_d_pullups(01100000);
+   
+   enable_interrupts(INT_TIMER1);
+   enable_interrupts(GLOBAL);
+   
+   setup_adc(ADC_CLOCK_DIV_32);
+   setup_adc_ports(ALL_ANALOG);
+   setup_adc_ports(sAN5); //vbat_adc
+   
+   int i=0;
+   int status=0;
+   int count=0;
+   IgniteModule();
+   do{
+      fprintf(PC,"------------");
+      //fgets(xx,PC);
+      
+      
+      batPath();
+      delay_ms(1000);
+   }while(1);
+}
+
+/*
+#define RTC_I2C_ADDR_2129   81
+#define RTC_I2C_ADDR_8523   104
+
+#define RTC_CONTROL1_REG   0x00
+#define RTC_CONTROL2_REG   0x01
+#define RTC_CONTROL3_REG   0x02
+
+#define RTC_SEC_REG         0x03
+#define RTC_MIN_REG         0x04
+#define RTC_HOUR_REG      0x05
+#define RTC_DATE_REG      0x06
+#define RTC_WEEKDAY_REG      0x07
+#define RTC_MONTH_REG      0x08
+#define RTC_YEAR_REG      0x09
+
+//?????????????
+  RTC_I2C_ADDR = RTC_I2C_ADDR_2129; //?? ????????? 2129
+  Wire.beginTransmission(RTC_I2C_ADDR_8523); // ????????? ???????? 8523
+  Wire.send(RTC_CONTROL1_REG);
+  Wire.endTransmission();
+  
+  Wire.requestFrom(RTC_I2C_ADDR_8523, 1);
+   
+  if(Wire.available())    //???? 8523 ????????, ?? ???????? ?? ????? ? ???????? ???? ?????????
+  { 
+    RTC_I2C_ADDR = RTC_I2C_ADDR_8523;
+    Wire.beginTransmission(RTC_I2C_ADDR_8523);
+    Wire.send(RTC_CONTROL1_REG);
+    Wire.send(B10000000);
+    Wire.endTransmission();
+    Wire.beginTransmission(RTC_I2C_ADDR_8523);
+    Wire.send(RTC_CONTROL3_REG);
+    Wire.send(B00000000);
+    Wire.endTransmission();
+  };
+
+// main loop
+
+        // check the battery
+        Wire.beginTransmission(RTC_I2C_ADDR);
+        Wire.send(RTC_CONTROL3_REG);
+        Wire.endTransmission();
+
+        Wire.requestFrom(RTC_I2C_ADDR, 1);   
+        if(Wire.available())    
+        {
+          c = Wire.receive();
+          if((c & B00000100) > 0) 
+            batLow = 1;
+          else
+            batLow = 0;
+        }
+
+
+        // Poll time
+        Wire.beginTransmission(RTC_I2C_ADDR);
+        Wire.send(RTC_SEC_REG);
+        Wire.endTransmission();
+    
+        Wire.requestFrom(RTC_I2C_ADDR, 3);    // request 3 bytes from slave device 
+  
+        if(Wire.available())    // seconds
+        { 
+          c = Wire.receive(); 
+          sec2 = c & B00001111; // units of seconds
+          sec1 = (c & B01110000) >> 4; // tens of seconds
+        };
+        if(Wire.available())    // minutes
+        { 
+          c = Wire.receive(); 
+          min2 = c & B00001111; // units of minutes
+          min1 = (c & B01110000) >> 4; // tens of minutes
+        };
+        if(Wire.available())    // hours
+        { 
+          c = Wire.receive(); 
+          h2 = c & B00001111; // units of hours 
+          h1 = (c & B00110000) >> 4; // tens of hours 
+        };
+
+    
+//setting the clock
+
+                // h1 tens of hours, h2 unit hours 
+                temp = h1 * 16 + h2;
+                Wire.beginTransmission(RTC_I2C_ADDR);
+                Wire.send(RTC_HOUR_REG);
+                Wire.send(temp);
+                Wire.endTransmission();
+
+                // min1 ??????? ?????, min2 ??????? ?????
+                temp = min1 * 16 + min2;
+                Wire.beginTransmission(RTC_I2C_ADDR);
+                Wire.send(RTC_MIN_REG);
+                Wire.send(temp);
+                Wire.endTransmission();
+*/                

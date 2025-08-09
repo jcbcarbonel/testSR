@@ -1,0 +1,10 @@
+#use rs232 (baud=19200, xmit=PIN_C6, rcv=PIN_C7, stream=SERIAL_INT)
+
+#int_ext1
+
+void ext_isr1(void)
+{
+   EXT_FLAG=1;
+   strcpy(SMS_RCV,RXD_DATA);
+}
+

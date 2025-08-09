@@ -1,0 +1,104 @@
+void getAstringEXO(char *strx,int endx,char *retVal)
+{
+   char *ptr=NULL;
+   char tempx[85]={};
+   char tokx[3]={};
+   int x=0;
+   
+   strcpy(tokx," ");
+   strcpy(tempx,strx);
+   ptr = strtok(tempx,tokx);
+   for(x=0;x<endx;x++)
+   {
+      ptr=strtok(0,tokx);
+   }
+   strcpy(retVal,ptr);
+}
+
+
+int1 dataPresent_exo()
+{
+   int16 timeOut=0;
+   
+   while(!kbhit(EXO)&&++timeOut<65000)
+   { delay_us(10); }
+   if(!kbhit(EXO))
+      return 0;
+   else
+      return 1;
+}
+
+void parseEXOdata() 
+{
+   //remove absolute pressure
+   char tempStorage[10]={};
+   char charx='+';
+   int arrx[] = {2,3,4,5,6,7,8,9,10,11};
+   char strx[55]={};
+   
+   //120314 122912 58.12 4.80 25.02 0.12 -0.00 5.74 0.00 0.03 0.02 27.09
+   
+   int i=0;
+   for (i=0;i<sizeof(arrx);i++)
+   {
+      getAstringEXO(funcReturnVar,arrx[i],tempStorage);
+      if (i==0)
+         strcpy(strx,tempStorage);
+      else
+         strcat(strx,tempStorage);
+      strncat(strx,&charx,1);
+   }
+   strcpy(funcReturnVar,strx);
+}
+
+void getEXOData()
+{
+   int1 dp=0;
+   char cx[85]={};
+   char chx;
+   int retry = 0;
+
+retry_:  
+   int i=0;
+   int x=0;
+   
+   //fprintf(PC,"acquiring wave data...\n");
+   if (retry > 4)
+   {
+      strcpy(funcReturnVar,"EXO_ERR");
+      fprintf(PC,"EXO=%s\n",funcReturnVar);
+      return;
+   }      
+   delay_ms(500);
+   fprintf(EXO,"Data\r");
+   while(x<90)
+   {
+      dp = dataPresent_exo();
+      if (dp == 1)
+      {         
+         chx = fgetc(EXO);
+         //fprintf(PC,"x=%c\n",chx);
+         if ((chx == '\r') && (i>5))
+         {
+            cx[i]='\0';
+            strcpy(funcReturnVar,cx);
+            break;
+         }  
+         else
+         {
+            cx[i]=chx;
+            i++;               
+         }
+         x++;
+      }
+      else
+      {
+         delay_ms(1);
+         retry++;
+         goto retry_;
+      }
+   }
+   parseEXOdata();
+   fprintf(PC,"EXO=%s\n",funcReturnVar);
+}
+

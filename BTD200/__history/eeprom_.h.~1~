@@ -1,0 +1,10 @@
+void DelEepromPhoneNum();
+void DelOneNum(char *num1);
+void listPhNum(int hbp);
+void newEEData(char *eedata, unsigned int16 hbp);
+void AddDataEEprom(char *data,int hbp);
+void readCharEE(unsigned int16 hbp, char & outChar);
+void writeCharEE(char hbp, unsigned int16 addx);
+void ReadEE(unsigned int16 basti,unsigned int16 hbp);
+int1 checkEEpromStatus (unsigned int16 bry);
+void readDataEEprom(int hbp);

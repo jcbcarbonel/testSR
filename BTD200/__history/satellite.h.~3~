@@ -1,0 +1,12 @@
+int SATELLITE_FLAG=0;
+
+void satelliteCommand();
+void satEchoOff();
+void getCSQ();
+void satIniforSend();
+void satWriteData();
+int satSendData();
+int satProcess();
+int satelliteSend();
+void SatelliteManualCommands();
+

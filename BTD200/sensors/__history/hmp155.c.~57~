@@ -1,0 +1,145 @@
+int1 dataPresent_hmp155()
+{
+   int16 timeOut=0;
+   
+   while(!kbhit(RS485_HMP155)&&++timeOut<50000)
+   { delay_us(100); }
+   if(!kbhit(RS485_HMP155))
+      return 0;
+   else
+      return 1;
+}
+
+void parseHMPData()
+{
+   char strx[25]={};
+   char *ptr;
+   char token_[3]={};
+   char temperature[6]={};
+   char humidity[6]={};
+   int x=0;
+   char delim='+';
+   
+   strcpy(token_," ");
+   strcpy(strx,"RH= 35.5 %RH T= 23.0 'C");
+   ptr = strtok(strx, token_);
+   fprintf(PC,"\r");
+   while (x < 5)
+   {
+      ptr = strtok(0,token_);
+      fprintf(PC,"x=%i ptr=%s\r",x,ptr);
+      if (x==0)
+         strcpy(humidity,ptr);
+      if (x==3)
+         strcpy(temperature,ptr);
+      x++;
+   }
+   strcpy(funcReturnVar,temperature);
+   strncat(funcReturnVar,delim);
+   strcat(funcReturnVar,humidity);
+}
+
+// sample output--> RH= 35.5 %RH T= 23.0 'C
+void extractDataHMP155()
+{
+   int1 boolx=0;
+   int1 dp=0;
+   int i=0;
+   int x=0;
+   char cx[55]={};
+   char chx;
+   int retry=0;
+   
+   delay_ms(100);
+   writeToRS485();
+   delay_ms(5);
+   fprintf(RS485_HMP155,"SEND 1\r");
+   readFromRS485();
+   dp = dataPresent_hmp155();
+   if (dp == 1)
+   {
+      if(kbhit(RS485_HMP155))
+      {
+         while(i<35)
+         {
+            cx[i]=fgetc(RS485_HMP155);
+            if ((boolx == 0) && (cx[i] == 'R'))
+               boolx = 1;
+            if ((boolx == 1) && (cx[i] == 'C'))
+               break;
+            if (boolx == 1)            
+               i++;
+         }
+      }         
+      cx[++i]='\0';
+      strcpy(funcReturnVar,cx);
+   }
+   else
+   {
+      strcpy(funcReturnVar,"HMP155_err");
+   }
+   
+}
+/*
+      
+   char cx[20];
+   int i=0;
+   
+   int cntx = 0;
+    
+    char temp[5]={0xFA,0x30,0x04,0x43,0X00}; //F48: initialise
+
+retx:
+    delay_ms(100);
+    
+    i=0;
+    
+    output_high(EN_DE_WL450);
+    output_high(EN_RE_WL450);
+    fprintf(RS485_WL450, "%s",temp);
+    output_low(EN_DE_WL450);
+    output_low(EN_RE_WL450);
+    
+    dp = dataPresent();
+    if (dp==0)
+    {
+      cntx++;
+      if (cntx <= 3)
+      {
+         fprintf(PC,"retry INI...\n");
+         goto retx;
+      }         
+      else
+      {
+         fprintf(PC,"ERR_INI...\n");
+         return;
+      }         
+    }
+    
+    while(i<10)
+      {cx[i]=fgetc(RS485_WL450);
+       //if (cx[i]!= 0x00)
+         i++;
+      }
+    /*
+    fprintf(PC, "\nrcv: ");
+    i=0;
+    while(i<10)
+      {fprintf(PC,"%X ",cx[i]);
+       i++;
+      }
+    
+    
+    cx[i]=0x00;
+/*    
+    fprintf(PC,"-------------\n");
+    for(xx=0;xx<=i;xx++)
+      fprintf(PC,"%x ",cx[xx]);
+    fprintf(PC,"-------------\n");
+  
+    if(CalcCRC16B(cx,10))
+     {fprintf(PC,"WL450 INITIALISED\n");}
+    else
+     {fprintf(PC,"WL450 NOT INITIALISED!\n");}   
+  }
+*/

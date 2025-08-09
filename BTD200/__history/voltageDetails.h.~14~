@@ -1,0 +1,18 @@
+const int1 LIPO_bat = 0;
+float BATT_VFACTOR = 18.851;
+float BATT_VFACTOR1 = 13;  //for lead acid
+
+int BATTERYUSED = LIPO_bat; 
+
+float batExt_adc(int channelx);
+float batAdc();
+void batPath();
+int compareSourceVoltages(int displayDirect);
+float getADCVoltage(int channel);
+void getBatteryVoltages(float & primary, float & secondary);
+void getPBoardVoltage(int1 source);
+#define DISPLAY_ONLY 1
+#define ACTIVATE 1
+#define DEACTIVATE 0
+
+float _vboost_;
