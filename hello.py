@@ -1,1 +1,1 @@
- print("This is a function call.")
+print("This is a function call.")
