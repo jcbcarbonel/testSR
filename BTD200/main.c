@@ -99,7 +99,7 @@ void main(){
    unsigned int8 tmp1;
    
    //int byteCount;
-   //char message[255]={};
+   char message[255]={};
    delay_ms(500);
    
    fprintf(USB, "\n*************************************************\n");
