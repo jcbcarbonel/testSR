@@ -3,7 +3,7 @@
     on:
       push:
         branches:
-          - dev # Or your release branch
+          - main # Or your release branch
 
     jobs:
       release:
