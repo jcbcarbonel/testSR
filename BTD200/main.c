@@ -169,11 +169,11 @@ void main(){
    
    delay_ms(200);
  
-   
+   readSerial();
             
    while(1){
       restart_wdt();
-      readSerial();
+      // readSerial();
       
          
 
