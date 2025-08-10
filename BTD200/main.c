@@ -173,7 +173,7 @@ void main(){
             
    while(1){
       restart_wdt();
-      //readSerial();
+      readSerial();
       
          
 
