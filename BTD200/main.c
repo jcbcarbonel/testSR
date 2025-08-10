@@ -138,7 +138,7 @@ void main(){
    
    
    //fprintf(GSM, "init\r");
-  // rtc_acquire_sync();             // sync datetime from rtc chip to both GSM and MCU
+   //rtc_acquire_sync();             // sync datetime from rtc chip to both GSM and MCU
    
 
    InterruptInput2_Flag=0;
@@ -169,11 +169,11 @@ void main(){
    
    delay_ms(200);
  
-   readSerial();
+   
             
    while(1){
       restart_wdt();
-      // readSerial();
+      readSerial();
       
          
 
