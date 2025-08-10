@@ -160,7 +160,7 @@ void main(){
    //output_high(pin_BOOST2); //18 volts
    
    fprintf(USB, "\nInitializing BTD200\n");
-   //igtLTE();
+   igtLTE();
    //char gsLTE;
   
    delay_ms(200);
