@@ -9,7 +9,7 @@ enabled=0
 chip=1
 D1=
 V1=
-buildcount=1
+buildcount=2
 
 [fileformats]
 forcecoff=0
@@ -61,16 +61,19 @@ Fixed=
 
 [Opened Files]
 1=main.c
-t1=1
+t1=7
 Count=1
 
 [ProjectLog]
-Days=1
+Days=2
 D1=08-08-2025
 D1_L=3
 D1_L1=[57563]Project Closed.
 D1_L2=[57563]Project Opened.
 D1_L3=[57575]Project Closed.
+D2=13-08-2025
+D2_L=1
+D2_L1=[54264]Project Opened.
 [Units]
 Count=1
 1=main (main)

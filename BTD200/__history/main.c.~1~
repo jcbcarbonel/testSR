@@ -14,7 +14,7 @@
 
 #use rs232(baud=57600, xmit=PIN_G4, rcv=PIN_G3, stream=RS232_BTD200)
 #use rs232 (baud=19200, xmit=PIN_C6, rcv=PIN_C7, stream=GSM)
-//!#use rs232(baud=57600, xmit=TX_B, rcv=RX_B, stream=RS232_BTD200)
+#use rs232(baud=57600, xmit=TX_B, rcv=RX_B, stream=RS232_BTD200)
 
 #include <math.h>
 #include <stdlib.h>

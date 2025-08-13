@@ -1,9 +1,9 @@
-D G "__PCH__" 0 0 ""5.091""
-D G "__DEVICE__" 0 0 ""
-D G "__DATE__" 0 0 ""8-Aug-25""
-D G "__TIME__" 0 0 ""15:59:24""
-D G "_UNICODE" 0 0 ""?""
-D G "__EVAL" 0 0 ""?"" "Author: Glenn Vincent Lopez"
+D G "__PCH__" 0 239 ""5.091""
+D G "__DEVICE__" 0 239 "8722"
+D G "__DATE__" 0 239 ""13-Aug-25""
+D G "__TIME__" 0 239 ""15:05:18""
+D G "_UNICODE" 0 239 ""?""
+D G "__EVAL" 0 239 ""?"" "Author: Glenn Vincent Lopez"
 c L "set_tris_a" 1 1 6 "FUNCTION"
 f N "set_tris_a" 1 48 ""
 v L "value" 1 48 "int8" `55 
@@ -984,9 +984,9 @@ f N "read_adc" 1 927 ""
 f G "read_adc" 1 927 "int16()" `443 
 f N "read_adc" 1 928 ""
 v L "mode" 1 928 "int8" `444 
-f G "read_adc" 1 928 "int16(int8 mode)" `443 
+f G "read_adc" 1 928 "int16(int8 mode,int32 pins)" `443 
 f N "adc_done" 1 929 ""
-f B "adc_done" 1 929 "int8(int8 mode)" `443  "Constants used for SETUP_ADC() are:"
+f B "adc_done" 1 929 "int8(int8 mode,int32 pins)" `443  "Constants used for SETUP_ADC() are:"
 d G "ADC_OFF" 1 931 "0" "ADC Off"
 d G "ADC_CLOCK_DIV_2" 1 932 "0x100"
 d G "ADC_CLOCK_DIV_4" 1 933 "0x04"
@@ -1416,9 +1416,9 @@ f B "i2c_transfer_in" 1 1113 "int8(int8 stream,int8 address,*int8 rData,int8 rCo
 f N "spi_xfer" 1 1116 ""
 f B "spi_xfer" 1 1116 "int8()" `717 
 f N "spi_xfer" 1 1117 ""
-f G "spi_xfer" 1 1117 "int16()" `718 
+f G "spi_xfer" 1 1117 "int16(int8 data)" `718 
 f N "spi_xfer" 1 1118 ""
-f G "spi_xfer" 1 1118 "int32()" `718 
+f G "spi_xfer" 1 1118 "int32(int8 data)" `718 
 f N "spi_xfer" 1 1119 ""
 v L "data" 1 1119 "int8" `719 
 f B "spi_xfer" 1 1119 "int8(int8 data)" `718 
@@ -1498,18 +1498,18 @@ f B "spi_prewrite" 1 1138 "void(int8 ,int32 data)" `771
 f N "spi_xfer_in" 1 1139 ""
 f B "spi_xfer_in" 1 1139 "int8()" `774 
 f N "spi_xfer_in" 1 1140 ""
-f G "spi_xfer_in" 1 1140 "int16()" `775 
+f G "spi_xfer_in" 1 1140 "int16(int8 bits)" `775 
 f N "spi_xfer_in" 1 1141 ""
-f G "spi_xfer_in" 1 1141 "int32()" `775 
+f G "spi_xfer_in" 1 1141 "int32(int8 bits)" `775 
 f N "spi_xfer_in" 1 1142 ""
 v L "bits" 1 1142 "int8" `776 
 f B "spi_xfer_in" 1 1142 "int8(int8 bits)" `775 
 f N "spi_xfer_in" 1 1143 ""
 v L "bits" 1 1143 "int8" `778 
-f G "spi_xfer_in" 1 1143 "int16(int8 bits)" `777 
+f G "spi_xfer_in" 1 1143 "int16(int8 bits,int8 bits)" `777 
 f N "spi_xfer_in" 1 1144 ""
 v L "bits" 1 1144 "int8" `778 
-f G "spi_xfer_in" 1 1144 "int32(int8 bits)" `777 
+f G "spi_xfer_in" 1 1144 "int32(int8 bits,int8 bits)" `777 
 f N "spi_xfer_in" 1 1145 ""
 v L "stream" 1 1145 "int8" `778 
 v L "bits" 1 1145 "int8" `779 
@@ -1517,11 +1517,11 @@ f B "spi_xfer_in" 1 1145 "int8(int8 stream,int8 bits)" `777
 f N "spi_xfer_in" 1 1146 ""
 v L "stream" 1 1146 "int8" `778 
 v L "bits" 1 1146 "int8" `782 
-f G "spi_xfer_in" 1 1146 "int16(int8 stream,int8 bits)" `780 
+f G "spi_xfer_in" 1 1146 "int16(int8 stream,int8 bits,int16 count)" `780 
 f N "spi_xfer_in" 1 1147 ""
 v L "stream" 1 1147 "int8" `778 
 v L "bits" 1 1147 "int8" `782 
-f G "spi_xfer_in" 1 1147 "int32(int8 stream,int8 bits)" `780 
+f G "spi_xfer_in" 1 1147 "int32(int8 stream,int8 bits,int16 count)" `780 
 f N "spi_transfer" 1 1148 ""
 v L "wData" 1 1148 "*int8" `781 
 v L "rData" 1 1148 "*int8" `782 
@@ -1590,9 +1590,9 @@ f B "rtos_stats" 1 1168 "void(int8 task,*int8 stat)" `823  "#use timer() Prototy
 f N "get_ticks" 1 1171 ""
 f B "get_ticks" 1 1171 "int8()" `826 
 f N "get_ticks" 1 1172 ""
-f G "get_ticks" 1 1172 "int16()" `827 
+f G "get_ticks" 1 1172 "int16(int8 stream)" `827 
 f N "get_ticks" 1 1173 ""
-f G "get_ticks" 1 1173 "int32()" `827 
+f G "get_ticks" 1 1173 "int32(int8 stream)" `827 
 f N "get_ticks" 1 1174 ""
 v L "stream" 1 1174 "int8" `828 
 f B "get_ticks" 1 1174 "int8(int8 stream)" `827 
@@ -3157,14 +3157,12 @@ C L "mcuStatusOnStartUp" 0 49 1 "FUNCTION"
 C L "mcuStatusOnStartUp" 0 49 1 "FUNCTION"
 C L "mcuStatusOnStartUp" 0 49 2 "FUNCTION"
 C L "mcuStatusOnStartUp" 0 49 2 "FUNCTION"
-C L "MAIN" 0 49 1 "FUNCTION"
 F N "MAIN" 0 95 ""
 F G "MAIN" 0 95 "void()" `1855 
 V L "dbg" 0 96 "int8[6]" `1856 
 V L "reset" 0 97 "int8[6]" `1857 
-C L "MAIN" 0 49 6 "FUNCTION"
-V L "tmp1" 0 104 "int8" `1858  "int byteCount;"
-C L "MAIN" 0 49 1 "FUNCTION"
+V L "tmp1" 0 99 "int8" `1858  "int byteCount;"
+V L "message" 0 102 "int8[255]" `1859 
 C L "MAIN" 0 49 1 "FUNCTION"
 C L "MAIN" 0 49 1 "FUNCTION"
 C L "MAIN" 0 49 1 "FUNCTION"
@@ -3176,8 +3174,7 @@ C L "MAIN" 0 49 2 "FUNCTION"
 C L "MAIN" 0 49 1 "FUNCTION"
 C L "MAIN" 0 49 1 "FUNCTION"
 C L "MAIN" 0 49 4 "FUNCTION"
-C L "MAIN" 0 49 1 "FUNCTION"
-C L "MAIN" 0 49 1 "FUNCTION"
+C L "MAIN" 0 49 2 "FUNCTION"
 C L "MAIN" 0 49 1 "FUNCTION"
 C L "MAIN" 0 49 1 "FUNCTION"
 C L "MAIN" 0 49 1 "FUNCTION"
@@ -3185,9 +3182,7 @@ C L "MAIN" 0 49 1 "FUNCTION"
 C L "MAIN" 0 49 3 "FUNCTION"
 C L "MAIN" 0 49 2 "FUNCTION"
 C L "MAIN" 0 49 1 "FUNCTION"
-C L "MAIN" 0 49 19 "FUNCTION"
-C L "MAIN" 0 49 12 "FUNCTION"
-C L "MAIN" 0 49 16 "FUNCTION"
+C L "MAIN" 0 49 1 "FUNCTION"
 C L "MAIN" 0 49 1 "FUNCTION"
 C L "MAIN" 0 49 1 "FUNCTION"
 C L "MAIN" 0 49 5 "FUNCTION"
