@@ -173,6 +173,7 @@ void main(){
             
    while(1){
       restart_wdt();
+      //read RS232
       readSerial();
       
          
