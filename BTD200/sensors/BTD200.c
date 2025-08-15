@@ -4,6 +4,9 @@
 //#use rs232(baud=57600, xmit=PIN_G4, rcv=PIN_G3, stream=RS232_BTD200)
 //#use rs232(baud=57600, xmit=TX_USB, rcv=RX_USB, stream=USB)
 
+#include <btd200.h>
+
+
  char message[255]={};
 
 void btdStatus(w){

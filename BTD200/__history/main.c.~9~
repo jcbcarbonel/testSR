@@ -40,8 +40,8 @@
 //#include <arQ1010/voltageDetails.c>
 #include <arQ1010/rs485.c>
 
-#include <sensors/as3935.h>
-#include <sensors/btd200.h>
+#include <sensors/as3935.c>
+#include <sensors/btd200.c>
 
 
 void mcuStatusOnStartUp(){
@@ -173,7 +173,7 @@ void main(){
             
    while(1){
       restart_wdt();
-      //readSerial();
+      readSerial();
       
          
 

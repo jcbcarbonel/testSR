@@ -9,7 +9,7 @@ enabled=0
 chip=1
 D1=
 V1=
-buildcount=2
+buildcount=4
 
 [fileformats]
 forcecoff=0
@@ -59,25 +59,32 @@ AdditionalOptionString=
 [CompilerVersion]
 Fixed=
 
+[ProjectLog]
+Days=1
+D1=15-08-2025
+D1_L=4
+D1_L1=[33445]Project Closed.
+D1_L2=[33445]Project Opened.
+D1_L3=[33647]Started Editing.
+D1_L4=[34189]Stopped Editing.
+
 [Opened Files]
 1=main.c
-t1=7
-Count=1
+t1=81
+Count=4
+2=arQ1010\gsm.c
+t2=18
+3=sensors\as3935.h
+t3=1
+4=sensors\btd200.c
+t4=1
 
-[ProjectLog]
-Days=3
-D1=08-08-2025
-D1_L=3
-D1_L1=[57563]Project Closed.
-D1_L2=[57563]Project Opened.
-D1_L3=[57575]Project Closed.
-D2=13-08-2025
-D2_L=2
-D2_L1=[54264]Project Opened.
-D2_L2=[57663]Project Closed.
-D3=15-08-2025
-D3_L=1
-D3_L1=[32046]Project Opened.
+[ExtraIncludes]
+Count=4
+1=main=c:\users\johncarlobcarbonel\testsr\btd200\sensors\as3935.h
+2=main=c:\users\johncarlobcarbonel\testsr\btd200\sensors\btd200.h
+3=main=c:\users\johncarlobcarbonel\testsr\btd200\sensors\btd200.c
+4=main=c:\users\johncarlobcarbonel\testsr\btd200\sensors\as3935.c
 [Units]
 Count=1
 1=main (main)
